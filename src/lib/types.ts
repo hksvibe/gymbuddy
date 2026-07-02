@@ -33,6 +33,8 @@ export interface UserProfile {
   name: string
   age: number
   city: string
+  height_cm: number      // required — drives BMI + plan personalization
+  weight_kg: number      // required — drives protein target (g/kg × goal multiplier)
   goal: Goal
   experience: Experience
   days_per_week: number

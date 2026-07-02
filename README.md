@@ -126,7 +126,8 @@ firebase.json · .firebaserc · firestore.rules · firestore.indexes.json · sto
 
 ```
 users/{uid}
-  name age city goal experience days_per_week session_length
+  name age city height_cm weight_kg
+  goal experience days_per_week session_length
   equipment[] equipment_source equipment_photo_urls[]
   diet_pref injuries[] medical_conditions[] other_constraints
   current_week created_at

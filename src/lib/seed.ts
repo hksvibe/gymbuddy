@@ -11,6 +11,8 @@ export async function seedDemo() {
     name: 'Rohan',
     age: 26,
     city: 'Pune',
+    height_cm: 172,
+    weight_kg: 78,
     goal: 'fat_loss',
     experience: 'never',
     days_per_week: 3,

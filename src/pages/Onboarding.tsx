@@ -14,6 +14,8 @@ interface Draft {
   name: string
   age: string
   city: string
+  height_cm: string
+  weight_kg: string
   goal?: Goal
   experience?: Experience
   days_per_week?: number
@@ -27,13 +29,13 @@ interface Draft {
   other_constraints: string
 }
 
-const TOTAL_STEPS = 10
+const TOTAL_STEPS = 11
 
 export default function Onboarding() {
   const nav = useNavigate()
   const [step, setStep] = useState(0)
   const [draft, setDraft] = useState<Draft>({
-    name: '', age: '', city: '',
+    name: '', age: '', city: '', height_cm: '', weight_kg: '',
     equipment: [], equipment_source: 'manual', equipment_photo_urls: [],
     injuries: [], medical_conditions: [], other_constraints: '',
   })
@@ -53,6 +55,8 @@ export default function Onboarding() {
         name: draft.name.trim() || 'Friend',
         age: Number(draft.age) || 25,
         city: draft.city.trim() || '',
+        height_cm: Number(draft.height_cm) || 170,
+        weight_kg: Number(draft.weight_kg) || 70,
         goal: draft.goal,
         experience: draft.experience,
         days_per_week: draft.days_per_week,
@@ -88,7 +92,7 @@ export default function Onboarding() {
         <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
           <div className="w-16 h-16 border-4 border-violet-deep/20 border-t-violet-deep rounded-full animate-spin mb-6" />
           <h2 className="text-xl font-bold text-ink">Building your plan…</h2>
-          <p className="mt-2 text-ink-soft text-sm">Personalizing for your equipment, injuries, and session length.</p>
+          <p className="mt-2 text-ink-soft text-sm">Personalizing for your body, equipment, and goals.</p>
           {error && (
             <div className="mt-6 w-full">
               <p className="text-red-600 text-sm mb-3">{error}</p>
@@ -119,8 +123,9 @@ export default function Onboarding() {
 
         <div className="flex-1 flex flex-col">
           {step === 0 && <StepBasics draft={draft} setDraft={setDraft} />}
+          {step === 1 && <StepBody draft={draft} setDraft={setDraft} />}
 
-          {step === 1 && (
+          {step === 2 && (
             <StepChoice
               title="What's your main goal?"
               subtitle="Pick the one closest to why you joined the gym."
@@ -135,7 +140,7 @@ export default function Onboarding() {
             />
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <StepChoice
               title="How much gym experience do you have?"
               subtitle="Be honest — beginners get a safer plan."
@@ -151,7 +156,7 @@ export default function Onboarding() {
             />
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <StepNumber
               title="How many days a week can you actually train?"
               subtitle="Pick what's realistic, not what's ideal."
@@ -161,7 +166,7 @@ export default function Onboarding() {
             />
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <StepChoice
               title="How long is each session?"
               subtitle="We'll build the day to actually fit inside this."
@@ -175,7 +180,7 @@ export default function Onboarding() {
             />
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <div>
               <h2 className="text-2xl font-bold text-ink leading-tight">
                 What&apos;s at your gym?
@@ -201,7 +206,7 @@ export default function Onboarding() {
             </div>
           )}
 
-          {step === 6 && (
+          {step === 7 && (
             <StepChoice
               title="Your diet preference?"
               subtitle="So we suggest meals you actually eat."
@@ -215,7 +220,7 @@ export default function Onboarding() {
             />
           )}
 
-          {step === 7 && (
+          {step === 8 && (
             <StepMulti
               title="Any injuries?"
               subtitle="So we keep painful movements out of your plan. Tap 'None' if you're good."
@@ -233,7 +238,7 @@ export default function Onboarding() {
             />
           )}
 
-          {step === 8 && (
+          {step === 9 && (
             <StepMulti
               title="Any medical conditions?"
               subtitle="We adjust intensity for safety. This is mandatory."
@@ -251,7 +256,7 @@ export default function Onboarding() {
             />
           )}
 
-          {step === 9 && (
+          {step === 10 && (
             <div>
               <h2 className="text-2xl font-bold text-ink leading-tight">
                 Anything else?
@@ -288,15 +293,19 @@ export default function Onboarding() {
 
 function canContinue(step: number, d: Draft) {
   if (step === 0) return d.name.trim().length > 0 && Number(d.age) >= 13
-  if (step === 1) return !!d.goal
-  if (step === 2) return !!d.experience
-  if (step === 3) return !!d.days_per_week
-  if (step === 4) return !!d.session_length
-  if (step === 5) return d.equipment.length > 0
-  if (step === 6) return !!d.diet_pref
-  if (step === 7) return d.injuries.length > 0
-  if (step === 8) return d.medical_conditions.length > 0
-  if (step === 9) return true
+  if (step === 1) {
+    const h = Number(d.height_cm), w = Number(d.weight_kg)
+    return h >= 120 && h <= 230 && w >= 30 && w <= 250
+  }
+  if (step === 2) return !!d.goal
+  if (step === 3) return !!d.experience
+  if (step === 4) return !!d.days_per_week
+  if (step === 5) return !!d.session_length
+  if (step === 6) return d.equipment.length > 0
+  if (step === 7) return !!d.diet_pref
+  if (step === 8) return d.injuries.length > 0
+  if (step === 9) return d.medical_conditions.length > 0
+  if (step === 10) return true
   return false
 }
 
@@ -335,6 +344,57 @@ function StepBasics({
           />
         </Field>
       </div>
+    </div>
+  )
+}
+
+function StepBody({
+  draft, setDraft,
+}: { draft: Draft, setDraft: (d: Draft) => void }) {
+  const h = Number(draft.height_cm)
+  const w = Number(draft.weight_kg)
+  const bmi = h && w ? (w / ((h / 100) ** 2)).toFixed(1) : null
+  return (
+    <div>
+      <h2 className="text-2xl font-bold text-ink leading-tight">Your body.</h2>
+      <p className="mt-2 text-ink-soft text-sm">
+        We use this to set the right protein target and pick exercises that suit your build.
+        Rough numbers are fine.
+      </p>
+
+      <div className="mt-8 space-y-4">
+        <Field label="Height (cm)">
+          <input
+            value={draft.height_cm}
+            onChange={(e) => setDraft({ ...draft, height_cm: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+            placeholder="e.g. 172"
+            inputMode="numeric"
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-ink focus:border-violet-deep focus:outline-none"
+          />
+        </Field>
+        <Field label="Weight (kg)">
+          <input
+            value={draft.weight_kg}
+            onChange={(e) => setDraft({ ...draft, weight_kg: e.target.value.replace(/[^\d.]/g, '').slice(0, 5) })}
+            placeholder="e.g. 68"
+            inputMode="decimal"
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-ink focus:border-violet-deep focus:outline-none"
+          />
+        </Field>
+      </div>
+
+      {bmi && Number(bmi) > 0 && (
+        <div className="mt-6 rounded-2xl bg-lavender border border-violet-deep/15 px-4 py-3">
+          <p className="text-xs text-ink-soft uppercase tracking-wider">Your BMI</p>
+          <p className="mt-1 text-2xl font-bold text-violet-deep">{bmi}</p>
+          <p className="text-xs text-ink-soft mt-1">
+            {Number(bmi) < 18.5 ? 'Under normal range' :
+             Number(bmi) < 25 ? 'In normal range' :
+             Number(bmi) < 30 ? 'Above normal range' :
+             'Well above normal range'} · non-medical guide only
+          </p>
+        </div>
+      )}
     </div>
   )
 }

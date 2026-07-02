@@ -4,6 +4,8 @@ import type { FeltSummary } from '../types'
 
 const baseProfile: GeneratePlanInput = {
   age: 26,
+  height_cm: 172,
+  weight_kg: 70,
   goal: 'fat_loss',
   experience: 'never',
   days_per_week: 3,
@@ -48,6 +50,33 @@ describe('mockGeneratePlan — structure & contracts', () => {
   it('fits each day under session_length', () => {
     const p = mockGeneratePlan({ ...baseProfile, session_length: 20 })
     for (const d of p.days) expect(d.est_minutes).toBeLessThanOrEqual(20)
+  })
+})
+
+describe('mockGeneratePlan — diet uses weight-scaled protein', () => {
+  it('55kg fat-loss user gets a lower protein target than a 95kg user', () => {
+    const lighter = mockGeneratePlan({ ...baseProfile, weight_kg: 55 })
+    const heavier = mockGeneratePlan({ ...baseProfile, weight_kg: 95 })
+    expect(heavier.diet.daily_protein_target_g).toBeGreaterThan(lighter.diet.daily_protein_target_g)
+  })
+
+  it('muscle_gain multiplier stays in the 1.6-1.8 g/kg range', () => {
+    const p = mockGeneratePlan({ ...baseProfile, goal: 'muscle_gain', weight_kg: 70 })
+    const ratio = p.diet.daily_protein_target_g / 70
+    expect(ratio).toBeGreaterThanOrEqual(1.5)
+    expect(ratio).toBeLessThanOrEqual(2.0)
+  })
+
+  it('fat_loss multiplier stays in the 1.6-2.1 g/kg range (higher than muscle_gain)', () => {
+    const p = mockGeneratePlan({ ...baseProfile, goal: 'fat_loss', weight_kg: 70 })
+    const ratio = p.diet.daily_protein_target_g / 70
+    expect(ratio).toBeGreaterThanOrEqual(1.6)
+    expect(ratio).toBeLessThanOrEqual(2.1)
+  })
+
+  it('rounds protein target to the nearest 5g', () => {
+    const p = mockGeneratePlan({ ...baseProfile, weight_kg: 67 })
+    expect(p.diet.daily_protein_target_g % 5).toBe(0)
   })
 })
 

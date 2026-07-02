@@ -13,6 +13,8 @@ import type {
 
 export interface GeneratePlanInput {
   age: number
+  height_cm: number
+  weight_kg: number
   goal: Goal
   experience: Experience
   days_per_week: number
@@ -31,6 +33,8 @@ export function profileToInput(
 ): GeneratePlanInput {
   return {
     age: p.age,
+    height_cm: p.height_cm,
+    weight_kg: p.weight_kg,
     goal: p.goal,
     experience: p.experience,
     days_per_week: p.days_per_week,
@@ -186,7 +190,7 @@ export function mockGeneratePlan(input: GeneratePlanInput): PlanJSON {
   }
 
   const meals = mealsFor(input.diet_pref)
-  const protein = proteinTargetFor(input.goal)
+  const protein = proteinTargetFor(input.goal, input.weight_kg)
 
   const parts: string[] = []
   if (input.injuries.includes('lower_back')) parts.push("we've kept heavy spinal loading out")

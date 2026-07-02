@@ -1,4 +1,4 @@
-import type { DietPref, Meal } from '../lib/types'
+import type { DietPref, Goal, Meal } from '../lib/types'
 
 export function mealsFor(diet: DietPref): Meal[] {
   if (diet === 'veg') {
@@ -22,8 +22,30 @@ export function mealsFor(diet: DietPref): Meal[] {
   ]
 }
 
-export function proteinTargetFor(goal: string, _weightUnknown = true): number {
-  if (goal === 'muscle_gain' || goal === 'strength') return 110
-  if (goal === 'fat_loss') return 95
-  return 85
+// Grams of protein per kg of body weight, tuned by goal.
+// Evidence-based ranges from ISSN / ACSM position papers for beginners:
+//  - muscle_gain / strength → 1.6–2.0 g/kg to support hypertrophy
+//  - fat_loss              → 1.8–2.4 g/kg to preserve lean mass during deficit
+//  - general_fitness       → 1.2–1.6 g/kg maintenance
+const PROTEIN_G_PER_KG: Record<Goal, number> = {
+  muscle_gain: 1.7,
+  strength: 1.7,
+  fat_loss: 1.8,
+  general_fitness: 1.4,
+}
+
+// Returns a rough daily protein target in grams, rounded to the nearest 5g.
+// Clamps to a sane range so unusual weights don't produce absurd targets.
+export function proteinTargetFor(goal: Goal, weight_kg: number): number {
+  const multiplier = PROTEIN_G_PER_KG[goal] ?? 1.4
+  const raw = weight_kg * multiplier
+  const rounded = Math.round(raw / 5) * 5
+  return Math.max(40, Math.min(220, rounded))
+}
+
+// BMI, for optional context in the plan summary. Non-medical.
+export function bmi(weight_kg: number, height_cm: number): number {
+  if (!height_cm) return 0
+  const h = height_cm / 100
+  return Math.round((weight_kg / (h * h)) * 10) / 10
 }

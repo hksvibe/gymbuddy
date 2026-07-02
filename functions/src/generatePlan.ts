@@ -12,7 +12,8 @@ Generate a SAFE, SIMPLE weekly workout plan tailored to the user.
 
 You MUST respect ALL of these simultaneously:
 - EQUIPMENT: use ONLY equipment in the provided list. If a movement needs gear they lack, substitute one that uses what they have (or bodyweight).
-- AGE & EXPERIENCE: scale volume/complexity to age and experience; beginners get simple foundational movements.
+- AGE, HEIGHT & WEIGHT: scale volume/complexity to age; use weight to set a realistic daily protein target (goal-dependent multiplier per kg of body weight — see DIET below). BMI = weight_kg / (height_m^2) can inform pacing but is not a medical claim.
+- EXPERIENCE: beginners get simple foundational movements.
 - GOAL: bias toward goal (fat_loss → compounds + light conditioning; muscle_gain → hypertrophy reps; strength → compound focus, beginner-safe; general_fitness → balanced).
 - MEDICAL & INJURIES (hard safety): lower_back → avoid loaded spinal flexion; knee → avoid deep loaded knee flexion; shoulder → avoid heavy overhead. high_bp/heart_condition/asthma → low intensity, no breath-holding/straining, add "consult a doctor". pregnancy → avoid supine after first trimester and high-impact; recommend professional guidance.
 - SESSION LENGTH: each day must realistically fit within session_length minutes.
@@ -23,7 +24,11 @@ Intensity: moderate reps (8–15), RPE 6–7. Never prescribe 1-rep-max or near-
 
 For EACH exercise: name, sets, reps, rpe, one-line "why", short form_cue, youtube_search_query.
 
-DIET: 3 budget common Indian meal ideas matching diet_pref + a rough daily protein target (general, non-medical).
+DIET: 3 budget common Indian meal ideas matching diet_pref + a rough daily protein target in grams tuned to weight_kg × goal-specific multiplier:
+- muscle_gain / strength → 1.6–1.8 g/kg
+- fat_loss             → 1.8–2.0 g/kg (preserves lean mass in a deficit)
+- general_fitness      → 1.2–1.4 g/kg
+Round to the nearest 5g. Keep this general, non-medical.
 
 ADAPTATION (if last_week provided):
 - Keep completed exercises; swap/simplify repeatedly-skipped ones.
@@ -63,6 +68,8 @@ Output schema:
 
 interface PlanInput {
   age: number
+  height_cm: number
+  weight_kg: number
   goal: string
   experience: string
   days_per_week: number
@@ -139,6 +146,10 @@ function validateInput(input: unknown): asserts input is PlanInput {
   if (!i || typeof i !== 'object') throw new HttpsError('invalid-argument', 'missing input')
   if (typeof i.goal !== 'string') throw new HttpsError('invalid-argument', 'goal required')
   if (typeof i.experience !== 'string') throw new HttpsError('invalid-argument', 'experience required')
+  if (typeof i.height_cm !== 'number' || i.height_cm < 120 || i.height_cm > 230)
+    throw new HttpsError('invalid-argument', 'height_cm must be 120-230')
+  if (typeof i.weight_kg !== 'number' || i.weight_kg < 30 || i.weight_kg > 250)
+    throw new HttpsError('invalid-argument', 'weight_kg must be 30-250')
   if (typeof i.days_per_week !== 'number' || i.days_per_week < 2 || i.days_per_week > 6)
     throw new HttpsError('invalid-argument', 'days_per_week must be 2-6')
   if (typeof i.session_length !== 'number' || ![20, 30, 45].includes(i.session_length))
