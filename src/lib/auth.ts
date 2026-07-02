@@ -36,12 +36,17 @@ function localGuestUser(): AuthUser {
   return { uid, email: null, displayName: 'Guest', photoURL: null, isAnonymous: true }
 }
 
-// The "current" user: real Firebase user, or a local guest UID when Firebase isn't configured.
+// The "current" user: real Firebase user if signed in, or a local guest UID
+// (Firebase off OR Anonymous auth not available on the project).
 export function currentUser(): AuthUser | null {
-  if (!firebaseConfigured || !auth) {
-    return localStorage.getItem(LOCAL_GUEST_MODE_KEY) === '1' ? localGuestUser() : null
-  }
-  return auth.currentUser ? toAuthUser(auth.currentUser) : null
+  if (firebaseConfigured && auth?.currentUser) return toAuthUser(auth.currentUser)
+  return localStorage.getItem(LOCAL_GUEST_MODE_KEY) === '1' ? localGuestUser() : null
+}
+
+// Local-guest UIDs are prefixed so storage can decide whether to hit Firestore
+// or fall back to localStorage without needing an extra Firebase auth roundtrip.
+export function isLocalGuestUid(uid: string): boolean {
+  return uid.startsWith('local_')
 }
 
 // Subscribe to changes. Returns an unsubscribe function.
@@ -62,14 +67,21 @@ export function subscribeAuth(cb: (u: AuthUser | null) => void): () => void {
   return onAuthStateChanged(auth, (u) => cb(u ? toAuthUser(u) : null))
 }
 
-// Explicit guest sign-in triggered by user pressing "Try as guest".
+// Explicit guest sign-in. Tries Firebase Anonymous first; falls back to a
+// local-only guest UID if anon auth isn't enabled on the Firebase project
+// (or Firebase isn't configured at all). Either way the user gets a UID
+// and the app is fully usable.
 export async function signInAsGuest(): Promise<AuthUser> {
-  if (!firebaseConfigured || !auth) {
-    localStorage.setItem(LOCAL_GUEST_MODE_KEY, '1')
-    return localGuestUser()
+  if (firebaseConfigured && auth) {
+    try {
+      const cred = await signInAnonymously(auth)
+      return toAuthUser(cred.user)
+    } catch (e) {
+      console.warn('Firebase anonymous auth unavailable; falling back to local guest', e)
+    }
   }
-  const cred = await signInAnonymously(auth)
-  return toAuthUser(cred.user)
+  localStorage.setItem(LOCAL_GUEST_MODE_KEY, '1')
+  return localGuestUser()
 }
 
 // Google sign-in. If the user is currently anonymous, tries to link the Google

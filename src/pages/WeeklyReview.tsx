@@ -9,10 +9,12 @@ import {
 } from '../lib/storage'
 import { generatePlan, profileToInput } from '../lib/api'
 import { buildLastWeekSummary } from '../lib/adaptive'
+import { useAuthUser } from '../hooks/useAuthUser'
 import type { Checkin, Plan, UserProfile } from '../lib/types'
 
 export default function WeeklyReview() {
   const nav = useNavigate()
+  const { loading: authLoading, user } = useAuthUser()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [plan, setPlan] = useState<Plan | null>(null)
   const [checkins, setCheckins] = useState<Checkin[]>([])
@@ -20,15 +22,17 @@ export default function WeeklyReview() {
   const [generating, setGenerating] = useState(false)
 
   useEffect(() => {
+    if (authLoading) return
+    if (!user) { nav('/', { replace: true }); return }
     (async () => {
       const [p, pl] = await Promise.all([loadProfile(), latestPlan()])
-      if (!p) { nav('/', { replace: true }); return }
+      if (!p) { nav('/onboarding', { replace: true }); return }
       if (!pl) { nav('/onboarding', { replace: true }); return }
       const ci = await checkinsForWeek(pl.week_number)
       setProfile(p); setPlan(pl); setCheckins(ci)
       setLoading(false)
     })()
-  }, [nav])
+  }, [authLoading, user?.uid, nav])
 
   if (loading || !plan || !profile) {
     return (

@@ -110,6 +110,26 @@ export interface Checkin {
   note?: string
 }
 
+// Daily / ad-hoc body measurement snapshot. Every field is optional per entry —
+// you weigh yourself daily but measure with a tape once a week; both go here.
+export interface Measurement {
+  id: string
+  user_id: string
+  logged_at: string        // ISO timestamp
+  logged_date: string      // YYYY-MM-DD — used to dedupe same-day entries
+  weight_kg?: number
+  waist_cm?: number
+  chest_cm?: number
+  arms_cm?: number         // relaxed upper-arm circumference
+  thighs_cm?: number
+  hips_cm?: number
+  body_fat_pct?: number
+  notes?: string
+}
+
+export type MeasurementField =
+  | 'weight_kg' | 'waist_cm' | 'chest_cm' | 'arms_cm' | 'thighs_cm' | 'hips_cm' | 'body_fat_pct'
+
 export interface WeeklyReview {
   id: string
   user_id: string

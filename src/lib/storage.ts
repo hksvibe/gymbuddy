@@ -8,8 +8,17 @@ import {
   doc, setDoc, getDoc, collection, addDoc, getDocs, query, where, orderBy,
 } from 'firebase/firestore'
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { currentUser, signInAsGuest } from './auth'
-import type { Checkin, Plan, UserProfile, WeeklyReview } from './types'
+import { currentUser, isLocalGuestUid, signInAsGuest } from './auth'
+import type { Checkin, Measurement, Plan, UserProfile, WeeklyReview } from './types'
+
+// True only when Firebase is configured AND the current UID is a real Firebase
+// user (i.e. not a local guest). Prevents Firestore permission-denied errors
+// when a guest falls back to local mode.
+function useFirestore(): boolean {
+  if (!firebaseConfigured || !db) return false
+  const uid = currentUser()?.uid
+  return !!uid && !isLocalGuestUid(uid)
+}
 
 function rid() {
   return 'id_' + Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -33,8 +42,8 @@ export async function ensureSignedIn(): Promise<string> {
 export async function saveProfile(p: Omit<UserProfile, 'id' | 'created_at'>) {
   const uid = await ensureSignedIn()
   const profile: UserProfile = { ...p, id: uid, created_at: new Date().toISOString() }
-  if (firebaseConfigured && db) {
-    await setDoc(doc(db, 'users', uid), profile)
+  if (useFirestore()) {
+    await setDoc(doc(db!, 'users', uid), profile)
   } else {
     localStorage.setItem(`gymbuddy.profile.${uid}`, JSON.stringify(profile))
   }
@@ -44,8 +53,8 @@ export async function saveProfile(p: Omit<UserProfile, 'id' | 'created_at'>) {
 export async function loadProfile(): Promise<UserProfile | null> {
   const uid = currentUid()
   if (!uid) return null
-  if (firebaseConfigured && db) {
-    const snap = await getDoc(doc(db, 'users', uid))
+  if (useFirestore()) {
+    const snap = await getDoc(doc(db!, 'users', uid))
     return snap.exists() ? (snap.data() as UserProfile) : null
   }
   const raw = localStorage.getItem(`gymbuddy.profile.${uid}`)
@@ -63,7 +72,7 @@ export async function updateProfile(patch: Partial<UserProfile>): Promise<UserPr
 // -------- Equipment photos --------
 export async function uploadEquipmentPhoto(file: File): Promise<string> {
   const uid = await ensureSignedIn()
-  if (firebaseConfigured) {
+  if (useFirestore()) {
     const storage = getStorage()
     const path = `equipment_photos/${uid}/${Date.now()}-${file.name}`
     const r = ref(storage, path)
@@ -86,8 +95,8 @@ function fileToDataUrl(file: File): Promise<string> {
 export async function savePlan(p: Omit<Plan, 'id' | 'user_id' | 'created_at'>): Promise<Plan> {
   const uid = await ensureSignedIn()
   const plan: Plan = { ...p, id: rid(), user_id: uid, created_at: new Date().toISOString() }
-  if (firebaseConfigured && db) {
-    const ref = await addDoc(collection(db, 'users', uid, 'plans'), plan)
+  if (useFirestore()) {
+    const ref = await addDoc(collection(db!, 'users', uid, 'plans'), plan)
     plan.id = ref.id
     await setDoc(ref, plan)
   } else {
@@ -101,8 +110,8 @@ export async function savePlan(p: Omit<Plan, 'id' | 'user_id' | 'created_at'>): 
 export async function listPlans(): Promise<Plan[]> {
   const uid = currentUid()
   if (!uid) return []
-  if (firebaseConfigured && db) {
-    const q = query(collection(db, 'users', uid, 'plans'), orderBy('week_number', 'asc'))
+  if (useFirestore()) {
+    const q = query(collection(db!, 'users', uid, 'plans'), orderBy('week_number', 'asc'))
     const snap = await getDocs(q)
     return snap.docs.map((d) => d.data() as Plan)
   }
@@ -117,12 +126,12 @@ export async function latestPlan(): Promise<Plan | null> {
 export async function updatePlanExerciseVideo(planId: string, exerciseName: string, video_id: string) {
   const uid = currentUid()
   if (!uid) return
-  if (firebaseConfigured && db) {
-    const snap = await getDoc(doc(db, 'users', uid, 'plans', planId))
+  if (useFirestore()) {
+    const snap = await getDoc(doc(db!, 'users', uid, 'plans', planId))
     if (!snap.exists()) return
     const plan = snap.data() as Plan
     mutateVideoId(plan, exerciseName, video_id)
-    await setDoc(doc(db, 'users', uid, 'plans', planId), plan)
+    await setDoc(doc(db!, 'users', uid, 'plans', planId), plan)
   } else {
     const all = listLocal<Plan>(`gymbuddy.plans.${uid}`)
     const idx = all.findIndex((p) => p.id === planId)
@@ -144,8 +153,8 @@ function mutateVideoId(plan: Plan, exerciseName: string, video_id: string) {
 export async function saveCheckin(c: Omit<Checkin, 'id' | 'user_id' | 'checked_in_at'>): Promise<Checkin> {
   const uid = await ensureSignedIn()
   const checkin: Checkin = { ...c, id: rid(), user_id: uid, checked_in_at: new Date().toISOString() }
-  if (firebaseConfigured && db) {
-    const ref = await addDoc(collection(db, 'users', uid, 'checkins'), checkin)
+  if (useFirestore()) {
+    const ref = await addDoc(collection(db!, 'users', uid, 'checkins'), checkin)
     checkin.id = ref.id
     await setDoc(ref, checkin)
   } else {
@@ -159,8 +168,8 @@ export async function saveCheckin(c: Omit<Checkin, 'id' | 'user_id' | 'checked_i
 export async function listCheckins(): Promise<Checkin[]> {
   const uid = currentUid()
   if (!uid) return []
-  if (firebaseConfigured && db) {
-    const q = query(collection(db, 'users', uid, 'checkins'), orderBy('checked_in_at', 'desc'))
+  if (useFirestore()) {
+    const q = query(collection(db!, 'users', uid, 'checkins'), orderBy('checked_in_at', 'desc'))
     const snap = await getDocs(q)
     return snap.docs.map((d) => d.data() as Checkin)
   }
@@ -171,9 +180,9 @@ export async function listCheckins(): Promise<Checkin[]> {
 export async function checkinsForWeek(week_number: number): Promise<Checkin[]> {
   const uid = currentUid()
   if (!uid) return []
-  if (firebaseConfigured && db) {
+  if (useFirestore()) {
     const q = query(
-      collection(db, 'users', uid, 'checkins'),
+      collection(db!, 'users', uid, 'checkins'),
       where('week_number', '==', week_number),
     )
     const snap = await getDocs(q)
@@ -186,8 +195,8 @@ export async function checkinsForWeek(week_number: number): Promise<Checkin[]> {
 export async function saveWeeklyReview(r: Omit<WeeklyReview, 'id' | 'user_id'>): Promise<WeeklyReview> {
   const uid = await ensureSignedIn()
   const review: WeeklyReview = { ...r, id: rid(), user_id: uid }
-  if (firebaseConfigured && db) {
-    await setDoc(doc(db, 'users', uid, 'weekly_reviews', `week_${r.week_number}`), review)
+  if (useFirestore()) {
+    await setDoc(doc(db!, 'users', uid, 'weekly_reviews', `week_${r.week_number}`), review)
   } else {
     const all = listLocal<WeeklyReview>(`gymbuddy.reviews.${uid}`)
     const idx = all.findIndex((x) => x.week_number === r.week_number)
@@ -201,11 +210,71 @@ export async function saveWeeklyReview(r: Omit<WeeklyReview, 'id' | 'user_id'>):
 export async function listWeeklyReviews(): Promise<WeeklyReview[]> {
   const uid = currentUid()
   if (!uid) return []
-  if (firebaseConfigured && db) {
-    const snap = await getDocs(collection(db, 'users', uid, 'weekly_reviews'))
+  if (useFirestore()) {
+    const snap = await getDocs(collection(db!, 'users', uid, 'weekly_reviews'))
     return snap.docs.map((d) => d.data() as WeeklyReview)
   }
   return listLocal<WeeklyReview>(`gymbuddy.reviews.${uid}`)
+}
+
+// -------- Measurements (daily body tracker) --------
+export async function saveMeasurement(m: Omit<Measurement, 'id' | 'user_id' | 'logged_at' | 'logged_date'>): Promise<Measurement> {
+  const uid = await ensureSignedIn()
+  const now = new Date()
+  const measurement: Measurement = {
+    ...m,
+    id: rid(),
+    user_id: uid,
+    logged_at: now.toISOString(),
+    logged_date: now.toISOString().slice(0, 10),
+  }
+  if (useFirestore()) {
+    const ref = await addDoc(collection(db!, 'users', uid, 'measurements'), measurement)
+    measurement.id = ref.id
+    await setDoc(ref, measurement)
+  } else {
+    const all = listLocal<Measurement>(`gymbuddy.measurements.${uid}`)
+    all.push(measurement)
+    localStorage.setItem(`gymbuddy.measurements.${uid}`, JSON.stringify(all))
+  }
+  // Keep the profile's weight_kg current so next week's plan uses the latest value.
+  if (typeof measurement.weight_kg === 'number' && measurement.weight_kg > 0) {
+    try {
+      await updateProfile({ weight_kg: measurement.weight_kg })
+    } catch { /* profile may not exist yet — swallow */ }
+  }
+  return measurement
+}
+
+export async function listMeasurements(): Promise<Measurement[]> {
+  const uid = currentUid()
+  if (!uid) return []
+  if (useFirestore()) {
+    const q = query(
+      collection(db!, 'users', uid, 'measurements'),
+      orderBy('logged_at', 'desc'),
+    )
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => d.data() as Measurement)
+  }
+  return listLocal<Measurement>(`gymbuddy.measurements.${uid}`)
+    .sort((a, b) => b.logged_at.localeCompare(a.logged_at))
+}
+
+export async function latestMeasurement(): Promise<Measurement | null> {
+  const all = await listMeasurements()
+  return all[0] ?? null
+}
+
+export async function deleteMeasurement(id: string): Promise<void> {
+  const uid = currentUid()
+  if (!uid) return
+  if (useFirestore()) {
+    await setDoc(doc(db!, 'users', uid, 'measurements', id), { deleted: true }, { merge: true })
+  } else {
+    const all = listLocal<Measurement>(`gymbuddy.measurements.${uid}`).filter((m) => m.id !== id)
+    localStorage.setItem(`gymbuddy.measurements.${uid}`, JSON.stringify(all))
+  }
 }
 
 // -------- helpers --------

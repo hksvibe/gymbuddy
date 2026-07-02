@@ -12,12 +12,14 @@ import {
 } from '../lib/storage'
 import { generatePlan, profileToInput } from '../lib/api'
 import { trimToFit } from '../data/exercises'
+import { useAuthUser } from '../hooks/useAuthUser'
 import type { Checkin, Exercise, Felt, Plan, UserProfile } from '../lib/types'
 
 type ExerciseStatus = 'pending' | 'done' | 'skipped'
 
 export default function Today() {
   const nav = useNavigate()
+  const { loading: authLoading, user } = useAuthUser()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [plan, setPlan] = useState<Plan | null>(null)
   const [weekCheckins, setWeekCheckins] = useState<Checkin[]>([])
@@ -32,9 +34,11 @@ export default function Today() {
   const [videoFor, setVideoFor] = useState<Exercise | null>(null)
 
   useEffect(() => {
+    if (authLoading) return
+    if (!user) { nav('/', { replace: true }); return }
     (async () => {
       const p = await loadProfile()
-      if (!p) { nav('/', { replace: true }); return }
+      if (!p) { nav('/onboarding', { replace: true }); return }
       const pl = await latestPlan()
       if (!pl) { nav('/onboarding', { replace: true }); return }
       const ci = await checkinsForWeek(pl.week_number)
@@ -45,7 +49,7 @@ export default function Today() {
       setActiveDayIdx(firstUndone === -1 ? pl.plan_json.days.length - 1 : firstUndone)
       setLoading(false)
     })()
-  }, [nav])
+  }, [authLoading, user?.uid, nav])
 
   const activeDay = plan?.plan_json.days[activeDayIdx]
   const alreadyCheckedIn = useMemo(

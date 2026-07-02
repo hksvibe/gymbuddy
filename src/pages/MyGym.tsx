@@ -6,10 +6,12 @@ import BottomNav from '../components/BottomNav'
 import PrimaryButton from '../components/PrimaryButton'
 import EquipmentCapture from '../components/EquipmentCapture'
 import { loadProfile, updateProfile } from '../lib/storage'
+import { useAuthUser } from '../hooks/useAuthUser'
 import type { Equipment, EquipmentSource, UserProfile } from '../lib/types'
 
 export default function MyGym() {
   const nav = useNavigate()
+  const { loading: authLoading, user } = useAuthUser()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [source, setSource] = useState<EquipmentSource>('manual')
@@ -18,14 +20,16 @@ export default function MyGym() {
   const [savedAt, setSavedAt] = useState<number | null>(null)
 
   useEffect(() => {
+    if (authLoading) return
+    if (!user) { nav('/', { replace: true }); return }
     loadProfile().then((p) => {
-      if (!p) { nav('/', { replace: true }); return }
+      if (!p) { nav('/onboarding', { replace: true }); return }
       setProfile(p)
       setEquipment(p.equipment)
       setSource(p.equipment_source)
       setPhotoUrls(p.equipment_photo_urls ?? [])
     })
-  }, [nav])
+  }, [authLoading, user?.uid, nav])
 
   const dirty =
     !!profile && (
