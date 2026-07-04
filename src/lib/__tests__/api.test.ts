@@ -26,12 +26,13 @@ describe('mockGeneratePlan — structure & contracts', () => {
     expect(p.days.length).toBe(4)
   })
 
-  it('only uses equipment the user listed', () => {
+  it('main-phase exercises only use equipment the user listed (bodyweight always allowed for warm-up/cool-down)', () => {
     const p = mockGeneratePlan({ ...baseProfile, equipment: ['dumbbells'] })
+    const allowed = new Set(['dumbbells', 'bodyweight'])
     for (const d of p.days) {
-      for (const ex of d.exercises) {
+      for (const ex of d.exercises.filter((e) => e.phase === 'main')) {
         for (const eq of ex.uses_equipment) {
-          expect(['dumbbells']).toContain(eq)
+          expect(allowed).toContain(eq)
         }
       }
     }
@@ -47,9 +48,25 @@ describe('mockGeneratePlan — structure & contracts', () => {
     expect(mockGeneratePlan({ ...baseProfile, days_per_week: 8 }).days.length).toBe(6)
   })
 
-  it('fits each day under session_length', () => {
-    const p = mockGeneratePlan({ ...baseProfile, session_length: 20 })
-    for (const d of p.days) expect(d.est_minutes).toBeLessThanOrEqual(20)
+  it('enforces the 25-minute floor on session_length', () => {
+    const p = mockGeneratePlan({ ...baseProfile, session_length: 25 })
+    for (const d of p.days) expect(d.est_minutes).toBeGreaterThanOrEqual(25)
+  })
+
+  it('every day includes at least 4 main-phase exercises', () => {
+    const p = mockGeneratePlan(baseProfile)
+    for (const d of p.days) {
+      const mains = d.exercises.filter((e) => e.phase === 'main')
+      expect(mains.length).toBeGreaterThanOrEqual(4)
+    }
+  })
+
+  it('every day includes a warm-up and a cool-down', () => {
+    const p = mockGeneratePlan(baseProfile)
+    for (const d of p.days) {
+      expect(d.exercises.some((e) => e.phase === 'warmup')).toBe(true)
+      expect(d.exercises.some((e) => e.phase === 'cooldown')).toBe(true)
+    }
   })
 })
 

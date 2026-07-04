@@ -1,4 +1,4 @@
-import { Play, Check, X, Repeat, AlertCircle } from 'lucide-react'
+import { Play, Check, X, Timer, AlertCircle } from 'lucide-react'
 import type { Exercise } from '../lib/types'
 import { emojiFor } from '../data/equipment'
 
@@ -8,11 +8,11 @@ interface Props {
   onToggleDone: () => void
   onToggleSkip: () => void
   onWatchDemo: () => void
-  onSwap?: () => void
+  onStartTimer: () => void
 }
 
 export default function ExerciseCard({
-  exercise, status, onToggleDone, onToggleSkip, onWatchDemo, onSwap,
+  exercise, status, onToggleDone, onToggleSkip, onWatchDemo, onStartTimer,
 }: Props) {
   return (
     <div
@@ -31,7 +31,7 @@ export default function ExerciseCard({
             <span className="font-medium text-ink">{exercise.sets}</span>
             <span className="text-ink-soft"> sets × </span>
             <span className="font-medium text-ink">{exercise.reps}</span>
-            <span className="text-ink-soft"> · RPE {exercise.rpe}</span>
+            {exercise.rpe && <span className="text-ink-soft"> · RPE {exercise.rpe}</span>}
           </div>
           {exercise.uses_equipment && exercise.uses_equipment.length > 0 && (
             <div className="mt-1.5 text-xs text-ink-soft flex flex-wrap gap-1">
@@ -81,15 +81,13 @@ export default function ExerciseCard({
           <Play className="w-4 h-4 fill-current" />
           Watch demo
         </button>
-        {onSwap && (
-          <button
-            onClick={onSwap}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft hover:text-ink"
-          >
-            <Repeat className="w-4 h-4" />
-            Swap
-          </button>
-        )}
+        <button
+          onClick={onStartTimer}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-violet-deep hover:text-violet-bright"
+        >
+          <Timer className="w-4 h-4" />
+          Timer
+        </button>
       </div>
 
       <details className="mt-3 group">

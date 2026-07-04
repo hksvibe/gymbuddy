@@ -3,7 +3,7 @@
 export type Goal = 'fat_loss' | 'muscle_gain' | 'general_fitness' | 'strength'
 export type Experience = 'never' | 'under_1m' | '1_3m' | '3_12m' | 'over_1y'
 export type DietPref = 'veg' | 'non_veg' | 'egg_veg'
-export type SessionLength = 20 | 30 | 45
+export type SessionLength = 25 | 30 | 45
 
 // Canonical equipment vocabulary — keep tight so plans + photo detection stay consistent.
 export type Equipment =
@@ -50,8 +50,11 @@ export interface UserProfile {
   created_at: string
 }
 
+export type ExercisePhase = 'warmup' | 'main' | 'cooldown'
+
 export interface Exercise {
   name: string
+  phase: ExercisePhase
   sets: number
   reps: string
   rpe: string
@@ -61,6 +64,8 @@ export interface Exercise {
   video_id: string | null
   uses_equipment: Equipment[]
   safe_for_user: boolean
+  rest_seconds?: number      // rest between sets — used by the timer modal
+  hold_seconds?: number      // for stretches / planks — the "work" duration
 }
 
 export interface PlanDay {
@@ -71,9 +76,13 @@ export interface PlanDay {
 }
 
 export interface Meal {
-  name: string
-  idea: string
+  name: string                 // Breakfast | Lunch | Dinner
+  idea: string                 // e.g. "Besan chilla + curd"
   approx_protein_g: number
+  ingredients: string[]        // e.g. ["1 cup besan (chickpea flour)", "1 chopped onion", ...]
+  recipe: string[]             // ordered steps; keep short and beginner-friendly
+  approx_kcal?: number
+  prep_minutes?: number
 }
 
 export interface PlanJSON {
@@ -145,6 +154,22 @@ export interface FeltSummary {
   ok: number
   hard: number
   pain: number
+}
+
+// Legal / safety consents recorded per user. Every accept produces a new
+// record so we retain full history even if the version text changes later.
+export type ConsentKind = 'general_ai' | 'chronic_condition'
+
+export interface Consent {
+  id: string
+  user_id: string
+  kind: ConsentKind
+  version: string              // matches CONSENT_VERSIONS in lib/consent.ts
+  accepted: boolean            // always true when saved (record of consent, not refusal)
+  accepted_at: string          // ISO timestamp
+  medical_conditions_at_accept: string[]   // snapshot of user's medical_conditions at the moment of consent
+  injuries_at_accept: string[]             // snapshot of injuries at the moment of consent
+  text_hash: string            // short hash of the exact text shown — audit trail
 }
 
 export interface LastWeekSummary {

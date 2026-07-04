@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, Flame, Utensils, Loader2, Zap, Clock } from 'lucide-react'
+import { Check, Flame, Utensils, Loader2, Zap, Clock, ChefHat, ShoppingBasket, Sunrise, Wind } from 'lucide-react'
 import MobileShell from '../components/MobileShell'
 import BottomNav from '../components/BottomNav'
 import ExerciseCard from '../components/ExerciseCard'
 import Disclaimer from '../components/Disclaimer'
 import YouTubeEmbed from '../components/YouTubeEmbed'
 import FeltPrompt from '../components/FeltPrompt'
+import RestTimer from '../components/RestTimer'
 import {
-  latestPlan, loadProfile, saveCheckin, checkinsForWeek, savePlan,
+  latestPlan, loadProfile, saveCheckin, checkinsForWeek,
 } from '../lib/storage'
-import { generatePlan, profileToInput } from '../lib/api'
 import { trimToFit } from '../data/exercises'
+// swap is intentionally removed — users get their adjustments via next week's regen
 import { useAuthUser } from '../hooks/useAuthUser'
-import type { Checkin, Exercise, Felt, Plan, UserProfile } from '../lib/types'
+import type { Checkin, Exercise, Felt, Meal, Plan, UserProfile } from '../lib/types'
 
 type ExerciseStatus = 'pending' | 'done' | 'skipped'
 
@@ -28,10 +29,10 @@ export default function Today() {
   const [felt, setFelt] = useState<Felt | undefined>(undefined)
   const [saving, setSaving] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
-  const [swapping, setSwapping] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [expressMode, setExpressMode] = useState(false)
   const [videoFor, setVideoFor] = useState<Exercise | null>(null)
+  const [timerFor, setTimerFor] = useState<Exercise | null>(null)
 
   useEffect(() => {
     if (authLoading) return
@@ -57,11 +58,16 @@ export default function Today() {
     [weekCheckins, activeDay],
   )
 
-  // Express mode trims today's day to a 15-min budget (half the normal session).
-  const displayedExercises: Exercise[] = useMemo(() => {
-    if (!activeDay) return []
-    if (!expressMode) return activeDay.exercises
-    return trimToFit(activeDay.exercises, 15)
+  // Split by phase — default to 'main' when the phase field is missing (older plans).
+  const { warmup, main, cooldown } = useMemo(() => {
+    if (!activeDay) return { warmup: [] as Exercise[], main: [] as Exercise[], cooldown: [] as Exercise[] }
+    const groups = { warmup: [] as Exercise[], main: [] as Exercise[], cooldown: [] as Exercise[] }
+    for (const ex of activeDay.exercises) {
+      const phase = ex.phase ?? 'main'
+      groups[phase].push(ex)
+    }
+    if (expressMode) groups.main = trimToFit(groups.main, 15, 4)
+    return groups
   }, [activeDay, expressMode])
 
   function setStatus(name: string, s: ExerciseStatus) {
@@ -74,7 +80,8 @@ export default function Today() {
     try {
       const exercises_done: string[] = []
       const exercises_skipped: string[] = []
-      for (const ex of displayedExercises) {
+      const allDisplayed = [...warmup, ...main, ...cooldown]
+      for (const ex of allDisplayed) {
         const s = statuses[ex.name]
         if (s === 'done') exercises_done.push(ex.name)
         else if (s === 'skipped') exercises_skipped.push(ex.name)
@@ -93,36 +100,6 @@ export default function Today() {
       setTimeout(() => setJustSaved(false), 2500)
     } finally {
       setSaving(false)
-    }
-  }
-
-  async function handleSwap(exerciseName: string) {
-    if (!plan || !profile || !activeDay) return
-    setSwapping(exerciseName)
-    try {
-      const fresh = await generatePlan(profileToInput(profile, plan.week_number, {
-        completion_pct: 1, days_completed: 0,
-        exercises_skipped: [exerciseName],
-        felt_summary: { easy: 0, ok: 0, hard: 0, pain: 0 },
-        equipment_changed: false,
-      }))
-      const sameDay = fresh.days[activeDayIdx] ?? fresh.days[0]
-      const replacement = sameDay.exercises.find((e) => e.name !== exerciseName)
-        ?? fresh.days.flatMap((d) => d.exercises).find((e) => e.name !== exerciseName)
-      if (!replacement) return
-      const newPlan = structuredClone(plan)
-      const day = newPlan.plan_json.days[activeDayIdx]
-      const idx = day.exercises.findIndex((e) => e.name === exerciseName)
-      if (idx >= 0) day.exercises[idx] = replacement
-      setPlan(newPlan)
-      await savePlan({
-        week_number: newPlan.week_number,
-        equipment_snapshot: profile.equipment,
-        plan_json: newPlan.plan_json,
-        source: 'adaptive',
-      })
-    } finally {
-      setSwapping(null)
     }
   }
 
@@ -226,7 +203,7 @@ export default function Today() {
             <h2 className="text-lg font-bold text-ink">{activeDay.day_label}</h2>
             <span className="text-xs text-ink-soft flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              {expressMode ? '~15 min' : `~${activeDay.est_minutes ?? profile.session_length} min`} · {activeDay.focus}
+              {expressMode ? '~20 min' : `~${activeDay.est_minutes ?? profile.session_length} min`} · {activeDay.focus}
             </span>
           </div>
 
@@ -245,30 +222,44 @@ export default function Today() {
                 {expressMode ? 'Express workout on' : 'Short on time?'}
               </p>
               <p className="text-xs text-ink-soft">
-                {expressMode ? 'Trimmed to ~15 min — hit the essentials.' : 'Trim today\'s plan to ~15 min.'}
+                {expressMode ? 'Main phase trimmed. Warm-up + cool-down still included.' : 'Trim the main phase (warm-up + cool-down stay).'}
               </p>
             </div>
           </button>
 
-          <div className="mt-3 space-y-3">
-            {displayedExercises.map((ex) => (
-              <div key={ex.name} className="relative">
-                {swapping === ex.name && (
-                  <div className="absolute inset-0 bg-white/70 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
-                    <Loader2 className="w-5 h-5 text-violet-deep animate-spin" />
-                  </div>
-                )}
-                <ExerciseCard
-                  exercise={ex}
-                  status={statuses[ex.name] ?? 'pending'}
-                  onToggleDone={() => setStatus(ex.name, 'done')}
-                  onToggleSkip={() => setStatus(ex.name, 'skipped')}
-                  onWatchDemo={() => setVideoFor(ex)}
-                  onSwap={() => handleSwap(ex.name)}
-                />
-              </div>
-            ))}
-          </div>
+          {/* Phase groups */}
+          {warmup.length > 0 && (
+            <PhaseGroup
+              title="Warm-up (dynamic)" subtitle="Loosen up before the real work."
+              icon={<Sunrise className="w-4 h-4" />}
+              tint="amber"
+              exercises={warmup}
+              statuses={statuses} setStatus={setStatus}
+              onWatchDemo={(ex) => setVideoFor(ex)}
+              onStartTimer={(ex) => setTimerFor(ex)}
+            />
+          )}
+
+          <PhaseGroup
+            title="Main workout" subtitle={`${main.length} exercises`}
+            tint="violet"
+            exercises={main}
+            statuses={statuses} setStatus={setStatus}
+            onWatchDemo={(ex) => setVideoFor(ex)}
+            onStartTimer={(ex) => setTimerFor(ex)}
+          />
+
+          {cooldown.length > 0 && (
+            <PhaseGroup
+              title="Cool-down (static stretch)" subtitle="Slow the breath. Hold each stretch."
+              icon={<Wind className="w-4 h-4" />}
+              tint="success"
+              exercises={cooldown}
+              statuses={statuses} setStatus={setStatus}
+              onWatchDemo={(ex) => setVideoFor(ex)}
+              onStartTimer={(ex) => setTimerFor(ex)}
+            />
+          )}
         </section>
 
         {/* Diet block */}
@@ -284,17 +275,9 @@ export default function Today() {
                 {plan.plan_json.diet.daily_protein_target_g}g
               </p>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {plan.plan_json.diet.meals.map((m) => (
-                <div key={m.name} className="flex items-center justify-between text-sm">
-                  <div>
-                    <span className="font-semibold text-ink">{m.name}: </span>
-                    <span className="text-ink-soft">{m.idea}</span>
-                  </div>
-                  <span className="text-xs text-ink-soft font-medium tabular-nums">
-                    ~{m.approx_protein_g}g
-                  </span>
-                </div>
+                <MealRow key={m.name} meal={m} />
               ))}
             </div>
             <p className="mt-3 text-xs text-ink-soft italic">
@@ -326,7 +309,117 @@ export default function Today() {
           planId={plan.id}
         />
       )}
+      {timerFor && (
+        <RestTimer open={!!timerFor} onClose={() => setTimerFor(null)} exercise={timerFor} />
+      )}
     </MobileShell>
+  )
+}
+
+interface PhaseGroupProps {
+  title: string
+  subtitle: string
+  icon?: React.ReactNode
+  tint: 'amber' | 'violet' | 'success'
+  exercises: Exercise[]
+  statuses: Record<string, ExerciseStatus>
+  setStatus: (name: string, s: ExerciseStatus) => void
+  onWatchDemo: (ex: Exercise) => void
+  onStartTimer: (ex: Exercise) => void
+}
+
+function PhaseGroup({
+  title, subtitle, icon, tint, exercises, statuses, setStatus, onWatchDemo, onStartTimer,
+}: PhaseGroupProps) {
+  const styles = {
+    amber: 'text-amber-700',
+    violet: 'text-violet-deep',
+    success: 'text-success-dark',
+  }[tint]
+  if (exercises.length === 0) return null
+  return (
+    <div className="mt-6">
+      <div className="flex items-center gap-2 mb-2">
+        {icon && <span className={styles}>{icon}</span>}
+        <h3 className={`text-sm font-bold ${styles} uppercase tracking-wider`}>{title}</h3>
+      </div>
+      <p className="text-xs text-ink-soft mb-3">{subtitle}</p>
+      <div className="space-y-3">
+        {exercises.map((ex) => (
+          <ExerciseCard
+            key={ex.name}
+            exercise={ex}
+            status={statuses[ex.name] ?? 'pending'}
+            onToggleDone={() => setStatus(ex.name, 'done')}
+            onToggleSkip={() => setStatus(ex.name, 'skipped')}
+            onWatchDemo={() => onWatchDemo(ex)}
+            onStartTimer={() => onStartTimer(ex)}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function MealRow({ meal }: { meal: Meal }) {
+  return (
+    <details className="group rounded-xl bg-white/60 border border-white/60 hover:border-violet-deep/20 transition">
+      <summary className="list-none cursor-pointer px-3 py-2.5 flex items-center justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm">
+            <span className="font-semibold text-ink">{meal.name}: </span>
+            <span className="text-ink-soft">{meal.idea}</span>
+          </p>
+          {(meal.prep_minutes || meal.approx_kcal) && (
+            <p className="text-[10px] text-ink-soft mt-0.5">
+              {meal.prep_minutes && `${meal.prep_minutes} min`}
+              {meal.prep_minutes && meal.approx_kcal && ' · '}
+              {meal.approx_kcal && `~${meal.approx_kcal} kcal`}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-xs text-ink-soft font-medium tabular-nums">
+            ~{meal.approx_protein_g}g
+          </span>
+          <span className="text-ink-soft text-xs group-open:rotate-180 transition">▾</span>
+        </div>
+      </summary>
+      {(meal.ingredients?.length || meal.recipe?.length) && (
+        <div className="px-3 pb-3 space-y-3 border-t border-violet-deep/10 pt-3">
+          {meal.ingredients && meal.ingredients.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold text-violet-deep uppercase tracking-wider flex items-center gap-1 mb-1.5">
+                <ShoppingBasket className="w-3 h-3" /> Ingredients
+              </p>
+              <ul className="space-y-0.5">
+                {meal.ingredients.map((ing, i) => (
+                  <li key={i} className="text-xs text-ink flex items-start gap-1.5">
+                    <span className="text-violet-deep mt-1">•</span>
+                    <span>{ing}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {meal.recipe && meal.recipe.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold text-violet-deep uppercase tracking-wider flex items-center gap-1 mb-1.5">
+                <ChefHat className="w-3 h-3" /> Recipe
+              </p>
+              <ol className="space-y-1">
+                {meal.recipe.map((step, i) => (
+                  <li key={i} className="text-xs text-ink flex items-start gap-2">
+                    <span className="text-violet-deep font-semibold flex-shrink-0">{i + 1}.</span>
+                    <span className="leading-relaxed">{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </div>
+      )}
+    </details>
   )
 }
 

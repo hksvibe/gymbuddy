@@ -3,7 +3,9 @@
 
 import { httpsCallable } from 'firebase/functions'
 import { firebaseConfigured, fns } from './firebase'
-import { estimateMinutes, pickExercises, trimToFit } from '../data/exercises'
+import {
+  estimateMinutes, padToMinimum, pickCooldown, pickExercises, pickWarmup, trimToFit,
+} from '../data/exercises'
 import { mealsFor, proteinTargetFor } from '../data/meals'
 import { canonicalize } from '../data/equipment'
 import type {
@@ -97,11 +99,13 @@ export async function resolveVideo(query: string): Promise<string | null> {
 
 // ---------------------- Client-side scrub ----------------------
 function filterUnavailableEquipment(plan: PlanJSON, available: Equipment[]): PlanJSON {
-  const set = new Set(available)
+  // Bodyweight is always implicitly available — every user has a body.
+  const set = new Set<Equipment>([...available, 'bodyweight'])
   const days = plan.days.map((d) => {
     const exercises = d.exercises.filter((ex) => {
+      // Warm-up and cool-down are bodyweight-only and always survive.
+      if (ex.phase === 'warmup' || ex.phase === 'cooldown') return true
       if (!ex.uses_equipment || ex.uses_equipment.length === 0) return true
-      // The exercise survives if at least one of its options is available.
       return ex.uses_equipment.some((eq) => set.has(eq))
     })
     return { ...d, exercises }
@@ -131,12 +135,18 @@ const FOCUS_LABELS: Record<Pattern, string> = {
   lunge: 'single-leg + core',
 }
 
+// Minimum main-phase exercises every session must contain.
+const MIN_MAIN_EXERCISES = 4
+// Minimum session length in minutes (enforced elsewhere too).
+const MIN_SESSION_MINUTES = 25
+
 export function mockGeneratePlan(input: GeneratePlanInput): PlanJSON {
   const useSplit = input.days_per_week >= 5 ? 'ppl' : 'full'
   const tpls = useSplit === 'ppl' ? PPL_TEMPLATES : FULL_BODY_TEMPLATES
   const days = []
   const dayCount = Math.max(2, Math.min(6, input.days_per_week))
   const noJumping = /no\s*jump|no\s*jumping/i.test(input.other_constraints)
+  const sessionLen = Math.max(MIN_SESSION_MINUTES, input.session_length)
 
   const lastPct = input.last_week?.completion_pct ?? 1
   const felt = input.last_week?.felt_summary
@@ -146,35 +156,51 @@ export function mockGeneratePlan(input: GeneratePlanInput): PlanJSON {
 
   for (let i = 0; i < dayCount; i++) {
     const tpl = tpls[i % tpls.length]
-    let exercises = pickExercises(tpl, input.equipment, input.injuries, input.medical_conditions, noJumping)
+    let mainExercises = pickExercises(tpl, input.equipment, input.injuries, input.medical_conditions, noJumping)
 
-    if (exercises.length === 0) {
-      exercises = pickExercises(tpl, ['bodyweight'], input.injuries, input.medical_conditions, noJumping)
+    if (mainExercises.length === 0) {
+      mainExercises = pickExercises(tpl, ['bodyweight'], input.injuries, input.medical_conditions, noJumping)
     }
+
+    // Enforce the 4-exercise floor for the main phase, drawing from unused patterns.
+    const fillerPatterns: Pattern[] = ['core', 'lunge', 'pull', 'squat', 'hinge', 'push']
+    mainExercises = padToMinimum(
+      mainExercises, fillerPatterns, input.equipment, input.injuries,
+      input.medical_conditions, MIN_MAIN_EXERCISES, noJumping,
+    )
 
     if (input.last_week?.exercises_skipped?.length) {
       const skipped = new Set(input.last_week.exercises_skipped.map((s) => s.toLowerCase()))
-      exercises = exercises.map((e) => {
+      mainExercises = mainExercises.map((e) => {
         if (!skipped.has(e.name.toLowerCase())) return e
         const alt = pickExercises([tpl[0]], ['bodyweight'], input.injuries, input.medical_conditions, noJumping)[0]
         return alt ?? e
       })
     }
     if (setBias !== 0) {
-      exercises = exercises.map((e) => ({
+      mainExercises = mainExercises.map((e) => ({
         ...e,
         sets: Math.max(2, Math.min(5, e.sets + setBias)),
       }))
     }
 
     // Tag each exercise with the equipment it actually uses (intersection with the user's list).
-    exercises = exercises.map((e) => ({
+    mainExercises = mainExercises.map((e) => ({
       ...e,
       uses_equipment: e.uses_equipment.filter((eq) => input.equipment.includes(eq)),
     })) as Exercise[]
 
-    // Express trim — keep day inside session_length budget.
-    exercises = trimToFit(exercises, input.session_length)
+    // Warm-up (dynamic) + cool-down (static stretch) — always included.
+    const warmup = pickWarmup(input.medical_conditions)
+    const cooldown = pickCooldown(input.medical_conditions)
+
+    // Trim main phase to fit within budget, but never below the 4-exercise floor.
+    const warmupMinutes = estimateMinutes(warmup)
+    const cooldownMinutes = estimateMinutes(cooldown)
+    const mainBudget = Math.max(15, sessionLen - warmupMinutes - cooldownMinutes)
+    mainExercises = trimToFit(mainExercises, mainBudget, MIN_MAIN_EXERCISES)
+
+    const dayExercises = [...warmup, ...mainExercises, ...cooldown]
 
     const focus = tpl.slice(0, 2).map((t) => FOCUS_LABELS[t]).join(' + ')
     const label = useSplit === 'ppl'
@@ -184,8 +210,8 @@ export function mockGeneratePlan(input: GeneratePlanInput): PlanJSON {
     days.push({
       day_label: label,
       focus,
-      est_minutes: Math.min(input.session_length, estimateMinutes(exercises)),
-      exercises,
+      est_minutes: Math.max(sessionLen, estimateMinutes(dayExercises)),
+      exercises: dayExercises,
     })
   }
 

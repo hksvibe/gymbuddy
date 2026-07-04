@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore'
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { currentUser, isLocalGuestUid, signInAsGuest } from './auth'
-import type { Checkin, Measurement, Plan, UserProfile, WeeklyReview } from './types'
+import type { Checkin, Consent, Measurement, Plan, UserProfile, WeeklyReview } from './types'
 
 // True only when Firebase is configured AND the current UID is a real Firebase
 // user (i.e. not a local guest). Prevents Firestore permission-denied errors
@@ -53,12 +53,20 @@ export async function saveProfile(p: Omit<UserProfile, 'id' | 'created_at'>) {
 export async function loadProfile(): Promise<UserProfile | null> {
   const uid = currentUid()
   if (!uid) return null
+  let profile: UserProfile | null = null
   if (useFirestore()) {
     const snap = await getDoc(doc(db!, 'users', uid))
-    return snap.exists() ? (snap.data() as UserProfile) : null
+    profile = snap.exists() ? (snap.data() as UserProfile) : null
+  } else {
+    const raw = localStorage.getItem(`gymbuddy.profile.${uid}`)
+    profile = raw ? JSON.parse(raw) : null
   }
-  const raw = localStorage.getItem(`gymbuddy.profile.${uid}`)
-  return raw ? JSON.parse(raw) : null
+  if (!profile) return null
+  // Migrate legacy 20-min session length → new 25-min floor.
+  if ((profile.session_length as number) < 25) {
+    profile = { ...profile, session_length: 25 }
+  }
+  return profile
 }
 
 export async function updateProfile(patch: Partial<UserProfile>): Promise<UserProfile> {
@@ -275,6 +283,39 @@ export async function deleteMeasurement(id: string): Promise<void> {
     const all = listLocal<Measurement>(`gymbuddy.measurements.${uid}`).filter((m) => m.id !== id)
     localStorage.setItem(`gymbuddy.measurements.${uid}`, JSON.stringify(all))
   }
+}
+
+// -------- Consents --------
+export async function saveConsentRecord(
+  c: Omit<Consent, 'id' | 'user_id'>,
+): Promise<Consent> {
+  const uid = await ensureSignedIn()
+  const record: Consent = { ...c, id: rid(), user_id: uid }
+  if (useFirestore()) {
+    const ref = await addDoc(collection(db!, 'users', uid, 'consents'), record)
+    record.id = ref.id
+    await setDoc(ref, record)
+  } else {
+    const all = listLocal<Consent>(`gymbuddy.consents.${uid}`)
+    all.push(record)
+    localStorage.setItem(`gymbuddy.consents.${uid}`, JSON.stringify(all))
+  }
+  return record
+}
+
+export async function listConsentRecords(): Promise<Consent[]> {
+  const uid = currentUid()
+  if (!uid) return []
+  if (useFirestore()) {
+    const q = query(
+      collection(db!, 'users', uid, 'consents'),
+      orderBy('accepted_at', 'desc'),
+    )
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => d.data() as Consent)
+  }
+  return listLocal<Consent>(`gymbuddy.consents.${uid}`)
+    .sort((a, b) => b.accepted_at.localeCompare(a.accepted_at))
 }
 
 // -------- helpers --------

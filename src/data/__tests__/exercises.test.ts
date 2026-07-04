@@ -28,7 +28,7 @@ describe('pickExercises — equipment + injury filter', () => {
 describe('trimToFit', () => {
   it('returns original list when already under budget', () => {
     const exercises: Exercise[] = [
-      { name: 'Plank', sets: 3, reps: '20 sec', rpe: '6', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['bodyweight'], safe_for_user: true },
+      { name: 'Plank', sets: 3, reps: '20 sec', rpe: '6', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['bodyweight'], safe_for_user: true, phase: 'main' as const },
     ]
     const out = trimToFit(exercises, 30)
     expect(out.length).toBe(exercises.length)
@@ -36,9 +36,9 @@ describe('trimToFit', () => {
 
   it('keeps at least 2 exercises even under tight budget', () => {
     const exercises: Exercise[] = [
-      { name: 'Plank', sets: 3, reps: '20 sec', rpe: '6', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['bodyweight'], safe_for_user: true },
-      { name: 'Dumbbell Goblet Squat', sets: 3, reps: '10-12', rpe: '6-7', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['dumbbells'], safe_for_user: true },
-      { name: 'Dumbbell One-Arm Row', sets: 3, reps: '10-12', rpe: '6-7', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['dumbbells'], safe_for_user: true },
+      { name: 'Plank', sets: 3, reps: '20 sec', rpe: '6', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['bodyweight'], safe_for_user: true, phase: 'main' as const },
+      { name: 'Dumbbell Goblet Squat', sets: 3, reps: '10-12', rpe: '6-7', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['dumbbells'], safe_for_user: true, phase: 'main' as const },
+      { name: 'Dumbbell One-Arm Row', sets: 3, reps: '10-12', rpe: '6-7', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['dumbbells'], safe_for_user: true, phase: 'main' as const },
     ]
     const out = trimToFit(exercises, 5)
     expect(out.length).toBeGreaterThanOrEqual(2)
@@ -46,9 +46,9 @@ describe('trimToFit', () => {
 
   it('drops trailing accessories first', () => {
     const exercises: Exercise[] = [
-      { name: 'Dumbbell Goblet Squat', sets: 3, reps: '10-12', rpe: '6-7', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['dumbbells'], safe_for_user: true },
-      { name: 'Dumbbell Bench Press', sets: 3, reps: '8-10', rpe: '6-7', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['dumbbells'], safe_for_user: true },
-      { name: 'Plank', sets: 3, reps: '20 sec', rpe: '6', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['bodyweight'], safe_for_user: true },
+      { name: 'Dumbbell Goblet Squat', sets: 3, reps: '10-12', rpe: '6-7', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['dumbbells'], safe_for_user: true, phase: 'main' as const },
+      { name: 'Dumbbell Bench Press', sets: 3, reps: '8-10', rpe: '6-7', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['dumbbells'], safe_for_user: true, phase: 'main' as const },
+      { name: 'Plank', sets: 3, reps: '20 sec', rpe: '6', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['bodyweight'], safe_for_user: true, phase: 'main' as const },
     ]
     const out = trimToFit(exercises, 14)
     expect(out[0].name).toBe('Dumbbell Goblet Squat')
@@ -58,8 +58,8 @@ describe('trimToFit', () => {
 describe('estimateMinutes', () => {
   it('sums approx minutes per known exercise', () => {
     const exercises: Exercise[] = [
-      { name: 'Plank', sets: 3, reps: '20 sec', rpe: '6', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['bodyweight'], safe_for_user: true },
-      { name: 'Dumbbell Goblet Squat', sets: 3, reps: '10-12', rpe: '6-7', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['dumbbells'], safe_for_user: true },
+      { name: 'Plank', sets: 3, reps: '20 sec', rpe: '6', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['bodyweight'], safe_for_user: true, phase: 'main' as const },
+      { name: 'Dumbbell Goblet Squat', sets: 3, reps: '10-12', rpe: '6-7', why: '', form_cue: '', youtube_search_query: '', video_id: null, uses_equipment: ['dumbbells'], safe_for_user: true, phase: 'main' as const },
     ]
     expect(estimateMinutes(exercises)).toBeGreaterThan(0)
   })

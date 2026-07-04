@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import MobileShell from '../components/MobileShell'
 import PrimaryButton from '../components/PrimaryButton'
 import EquipmentCapture from '../components/EquipmentCapture'
+import ConsentScreen from '../components/ConsentScreen'
 import { saveProfile, savePlan } from '../lib/storage'
 import { generatePlan, profileToInput } from '../lib/api'
+import { recordConsent, requiresChronicConsent } from '../lib/consent'
 import type {
   DietPref, Equipment, EquipmentSource, Experience, Goal, MedicalCondition,
   Injury, SessionLength, UserProfile,
@@ -29,7 +31,11 @@ interface Draft {
   other_constraints: string
 }
 
-const TOTAL_STEPS = 11
+// Steps 0..10 are profile inputs. Step 11 is general consent. Step 12 is
+// chronic-condition consent (shown ONLY when the user declared a condition).
+const CORE_STEPS = 11
+const GENERAL_CONSENT_STEP = 11
+const CHRONIC_CONSENT_STEP = 12
 
 export default function Onboarding() {
   const nav = useNavigate()
@@ -42,8 +48,30 @@ export default function Onboarding() {
   const [building, setBuilding] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const next = () => setStep((s) => Math.min(TOTAL_STEPS, s + 1))
+  const chronicRequired = requiresChronicConsent(draft.medical_conditions)
+  const totalSteps = CORE_STEPS + 1 + (chronicRequired ? 1 : 0)
+
+  const next = () => setStep((s) => Math.min(totalSteps - 1, s + 1))
   const back = () => setStep((s) => Math.max(0, s - 1))
+
+  async function acceptGeneral() {
+    await recordConsent({
+      kind: 'general_ai',
+      medical_conditions: draft.medical_conditions,
+      injuries: draft.injuries,
+    })
+    if (chronicRequired) next()
+    else await finish()
+  }
+
+  async function acceptChronic() {
+    await recordConsent({
+      kind: 'chronic_condition',
+      medical_conditions: draft.medical_conditions,
+      injuries: draft.injuries,
+    })
+    await finish()
+  }
 
   async function finish() {
     if (!draft.goal || !draft.experience || !draft.days_per_week
@@ -104,6 +132,8 @@ export default function Onboarding() {
     )
   }
 
+  const isConsentStep = step === GENERAL_CONSENT_STEP || step === CHRONIC_CONSENT_STEP
+
   return (
     <MobileShell>
       <div className="flex flex-col flex-1 px-6 pt-8 pb-6">
@@ -115,10 +145,10 @@ export default function Onboarding() {
           <div className="flex-1 h-1.5 bg-lavender rounded-full overflow-hidden">
             <div
               className="h-full bg-violet-deep transition-all"
-              style={{ width: `${((step + 1) / TOTAL_STEPS) * 100}%` }}
+              style={{ width: `${((step + 1) / totalSteps) * 100}%` }}
             />
           </div>
-          <span className="text-xs text-ink-soft tabular-nums">{step + 1}/{TOTAL_STEPS}</span>
+          <span className="text-xs text-ink-soft tabular-nums">{step + 1}/{totalSteps}</span>
         </div>
 
         <div className="flex-1 flex flex-col">
@@ -169,9 +199,9 @@ export default function Onboarding() {
           {step === 5 && (
             <StepChoice
               title="How long is each session?"
-              subtitle="We'll build the day to actually fit inside this."
+              subtitle="We'll fit warm-up, 4+ main exercises, and a cool-down into this."
               options={[
-                { v: '20', label: '20 min', sub: 'Short & sharp' },
+                { v: '25', label: '25 min', sub: 'Minimum for a real session' },
                 { v: '30', label: '30 min', sub: 'Sweet spot for most beginners' },
                 { v: '45', label: '45 min', sub: "I've got the time" },
               ]}
@@ -276,16 +306,33 @@ export default function Onboarding() {
               </p>
             </div>
           )}
+
+          {step === GENERAL_CONSENT_STEP && (
+            <ConsentScreen
+              kind="general_ai"
+              onAccept={acceptGeneral}
+              submittingLabel={chronicRequired ? 'Saving…' : 'Building your plan…'}
+            />
+          )}
+          {step === CHRONIC_CONSENT_STEP && chronicRequired && (
+            <ConsentScreen
+              kind="chronic_condition"
+              onAccept={acceptChronic}
+              submittingLabel="Building your plan…"
+            />
+          )}
         </div>
 
-        <div className="mt-6">
-          <PrimaryButton
-            onClick={step === TOTAL_STEPS - 1 ? finish : next}
-            disabled={!canContinue(step, draft)}
-          >
-            {step === TOTAL_STEPS - 1 ? 'Build my plan' : 'Continue'}
-          </PrimaryButton>
-        </div>
+        {!isConsentStep && (
+          <div className="mt-6">
+            <PrimaryButton
+              onClick={next}
+              disabled={!canContinue(step, draft)}
+            >
+              Continue
+            </PrimaryButton>
+          </div>
+        )}
       </div>
     </MobileShell>
   )
