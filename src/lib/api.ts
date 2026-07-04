@@ -70,6 +70,31 @@ export async function generatePlan(input: GeneratePlanInput): Promise<PlanJSON> 
   return filterUnavailableEquipment(raw, input.equipment)
 }
 
+// True when a plan looks like it was generated before the warm-up/cool-down +
+// recipe requirements shipped. Used to trigger a silent regeneration.
+export function isPlanStale(plan: PlanJSON): boolean {
+  if (!plan.days || plan.days.length === 0) return true
+  const firstDay = plan.days[0]
+  if (!firstDay.exercises || firstDay.exercises.length === 0) return true
+  // v1 plans didn't carry the phase field, so no exercise on any day will have it.
+  const anyWarmup = plan.days.some((d) => d.exercises.some((e) => e.phase === 'warmup'))
+  const anyCooldown = plan.days.some((d) => d.exercises.some((e) => e.phase === 'cooldown'))
+  if (!anyWarmup || !anyCooldown) return true
+  // Every day should have at least 4 main-phase exercises.
+  for (const d of plan.days) {
+    const mains = d.exercises.filter((e) => (e.phase ?? 'main') === 'main')
+    if (mains.length < 4) return true
+  }
+  // Every meal should carry ingredients + recipe.
+  const meals = plan.diet?.meals ?? []
+  if (meals.length === 0) return true
+  for (const m of meals) {
+    if (!Array.isArray(m.ingredients) || m.ingredients.length === 0) return true
+    if (!Array.isArray(m.recipe) || m.recipe.length === 0) return true
+  }
+  return false
+}
+
 export async function detectEquipment(imageUrls: string[]): Promise<Equipment[]> {
   if (firebaseConfigured && fns && imageUrls.length > 0) {
     try {

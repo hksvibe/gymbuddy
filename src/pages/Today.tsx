@@ -9,8 +9,9 @@ import YouTubeEmbed from '../components/YouTubeEmbed'
 import FeltPrompt from '../components/FeltPrompt'
 import RestTimer from '../components/RestTimer'
 import {
-  latestPlan, loadProfile, saveCheckin, checkinsForWeek,
+  latestPlan, loadProfile, saveCheckin, checkinsForWeek, savePlan,
 } from '../lib/storage'
+import { generatePlan, isPlanStale, profileToInput } from '../lib/api'
 import { trimToFit } from '../data/exercises'
 // swap is intentionally removed — users get their adjustments via next week's regen
 import { useAuthUser } from '../hooks/useAuthUser'
@@ -30,6 +31,8 @@ export default function Today() {
   const [saving, setSaving] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshFailed, setRefreshFailed] = useState(false)
   const [expressMode, setExpressMode] = useState(false)
   const [videoFor, setVideoFor] = useState<Exercise | null>(null)
   const [timerFor, setTimerFor] = useState<Exercise | null>(null)
@@ -40,15 +43,37 @@ export default function Today() {
     (async () => {
       const p = await loadProfile()
       if (!p) { nav('/onboarding', { replace: true }); return }
-      const pl = await latestPlan()
+      let pl = await latestPlan()
       if (!pl) { nav('/onboarding', { replace: true }); return }
       const ci = await checkinsForWeek(pl.week_number)
-      setProfile(p); setPlan(pl); setWeekCheckins(ci)
+
+      // Auto-regenerate plans generated before warm-up/cool-down + recipe requirements shipped.
+      if (isPlanStale(pl.plan_json)) {
+        setRefreshing(true)
+        setProfile(p); setPlan(pl); setWeekCheckins(ci); setLoading(false)
+        try {
+          const fresh = await generatePlan(profileToInput(p, pl.week_number))
+          const newPlan = await savePlan({
+            week_number: pl.week_number,
+            equipment_snapshot: p.equipment,
+            plan_json: fresh,
+            source: 'initial',
+          })
+          pl = newPlan
+          setPlan(newPlan)
+        } catch (e) {
+          console.warn('Plan refresh failed', e)
+          setRefreshFailed(true)
+        } finally {
+          setRefreshing(false)
+        }
+      } else {
+        setProfile(p); setPlan(pl); setWeekCheckins(ci); setLoading(false)
+      }
 
       const doneDayLabels = new Set(ci.map((c) => c.day_label))
       const firstUndone = pl.plan_json.days.findIndex((d) => !doneDayLabels.has(d.day_label))
       setActiveDayIdx(firstUndone === -1 ? pl.plan_json.days.length - 1 : firstUndone)
-      setLoading(false)
     })()
   }, [authLoading, user?.uid, nav])
 
@@ -128,6 +153,22 @@ export default function Today() {
         </header>
 
         <Disclaimer />
+
+        {refreshing && (
+          <div className="mx-6 mt-3 rounded-2xl bg-violet-deep text-white px-4 py-3 flex items-center gap-3">
+            <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+            <p className="text-xs leading-snug">
+              Updating your plan to the latest structure — warm-up + main + cool-down + recipes.
+            </p>
+          </div>
+        )}
+        {refreshFailed && !refreshing && (
+          <div className="mx-6 mt-3 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3">
+            <p className="text-xs text-amber-900 leading-snug">
+              Couldn&apos;t refresh your plan just now. Tap &quot;Generate next week&quot; from the Week tab to try again.
+            </p>
+          </div>
+        )}
 
         {/* Hero check-in button */}
         <div className="px-6 mt-6">
