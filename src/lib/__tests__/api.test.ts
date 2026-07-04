@@ -97,6 +97,33 @@ describe('mockGeneratePlan — diet uses weight-scaled protein', () => {
   })
 })
 
+describe('mockGeneratePlan — no exercise repeats across days when inventory allows', () => {
+  it('does not repeat a main exercise across days for a well-equipped user', () => {
+    const p = mockGeneratePlan({
+      ...baseProfile,
+      days_per_week: 3,
+      experience: 'over_1y',
+      equipment: ['dumbbells', 'bench', 'barbell', 'machines', 'cables', 'pull_up_bar'],
+    })
+    const allMains = p.days.flatMap((d) => d.exercises.filter((e) => e.phase === 'main').map((e) => e.name))
+    const uniqueMains = new Set(allMains)
+    // At least 80% of the mains should be unique — the mock caps duplicates
+    // only when inventory genuinely runs out.
+    expect(uniqueMains.size).toBeGreaterThanOrEqual(Math.floor(allMains.length * 0.8))
+  })
+
+  it('day labels never call a squat-heavy day "Upper Body"', () => {
+    const p = mockGeneratePlan({ ...baseProfile, experience: '1_3m' })
+    for (const d of p.days) {
+      const hasLowerBody = d.exercises.some((e) => (e.phase ?? 'main') === 'main' &&
+        /squat|deadlift|lunge|leg press|hip thrust|romanian/i.test(e.name))
+      if (hasLowerBody && /upper body/i.test(d.day_label)) {
+        throw new Error(`Miscategorised: ${d.day_label} contains lower-body work`)
+      }
+    }
+  })
+})
+
 describe('mockGeneratePlan — intensity tiers scale with experience', () => {
   it('gives a "never"-experience user LIGHT-only main exercises', () => {
     const p = mockGeneratePlan({ ...baseProfile, experience: 'never', equipment: ['bodyweight', 'dumbbells', 'barbell', 'bench'] })

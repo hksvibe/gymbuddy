@@ -32,6 +32,12 @@ STRUCTURE FOR EVERY DAY (this is mandatory):
 - Then a MAIN block: AT LEAST 4 exercises, each phase="main". These are the actual training work.
 - End with a STATIC stretch / cool-down: 3-4 hold-based stretches (quad, hamstring, shoulder, child's pose, etc.) totalling ~4 minutes. Each has phase="cooldown".
 
+CROSS-DAY UNIQUENESS (this is mandatory):
+- No main-phase exercise may repeat on more than one day within the same week. If Day 1 has "Dumbbell Bench Press", Day 3 must use a different chest press variation.
+- Warm-up and cool-down movements MAY repeat — they are meant to be a consistent daily ritual.
+
+DAY LABELS must match the actual movements. Never label a day "Upper Body" if it contains squats/deadlifts/lunges. Use "Full Body", "Upper Body", "Lower Body", "Push", "Pull", "Legs", or "Core & Cardio" — whichever fits the exercises you're prescribing. The "focus" field summarises the muscle groups.
+
 Intensity: moderate reps (8-15), RPE 6-7. Never prescribe 1-rep-max or near-max lifts.
 
 For EACH exercise include: name, phase, intensity, sets, reps, rpe, one-line "why", short form_cue, youtube_search_query, uses_equipment (subset of the input equipment), safe_for_user, and TIMING:
@@ -185,6 +191,14 @@ export function tryParse(raw: string): PlanJSON | null {
         if (typeof e.name !== 'string' || typeof e.sets !== 'number') return null
         if (typeof e.youtube_search_query !== 'string') return null
         if (!['light', 'medium', 'heavy'].includes(e.intensity)) return null
+      }
+    }
+    // No main-phase exercise may appear on more than one day (week-wide dedup).
+    const mainNames = new Set<string>()
+    for (const d of parsed.days) {
+      for (const e of d.exercises.filter((x) => x.phase === 'main')) {
+        if (mainNames.has(e.name)) return null
+        mainNames.add(e.name)
       }
     }
     for (const m of parsed.diet.meals) {

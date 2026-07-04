@@ -81,13 +81,18 @@ export function isPlanStale(plan: PlanJSON): boolean {
   const anyWarmup = plan.days.some((d) => d.exercises.some((e) => e.phase === 'warmup'))
   const anyCooldown = plan.days.some((d) => d.exercises.some((e) => e.phase === 'cooldown'))
   if (!anyWarmup || !anyCooldown) return true
+
   // Every day should have at least 4 main-phase exercises, and each of them
   // must carry an intensity tag (light | medium | heavy).
+  // Also: no main-phase exercise should repeat across days in the same week.
+  const seenMainNames = new Set<string>()
   for (const d of plan.days) {
     const mains = d.exercises.filter((e) => (e.phase ?? 'main') === 'main')
     if (mains.length < 4) return true
     for (const m of mains) {
       if (!m.intensity) return true
+      if (seenMainNames.has(m.name)) return true      // duplicate across days → stale
+      seenMainNames.add(m.name)
     }
   }
   // Every meal should carry ingredients + recipe.
@@ -159,10 +164,25 @@ const PPL_TEMPLATES: Pattern[][] = [
   ['squat', 'hinge', 'lunge', 'core'],
 ]
 
+// Human-friendly labels for each day. Chosen from the day template's patterns,
+// so a squat/push/pull day never gets called "Upper Body".
 const FOCUS_LABELS: Record<Pattern, string> = {
   squat: 'legs + core', hinge: 'posterior chain', push: 'chest + shoulders',
   pull: 'back + biceps', overhead: 'shoulders', core: 'core', cardio: 'cardio',
   lunge: 'single-leg + core',
+}
+
+// A day-name derived from the actual training patterns. Prevents "Upper Body"
+// labels landing on a day full of squats.
+function dayNameFor(tpl: Pattern[]): string {
+  const upper = new Set<Pattern>(['push', 'pull', 'overhead'])
+  const lower = new Set<Pattern>(['squat', 'hinge', 'lunge'])
+  const upperCount = tpl.filter((p) => upper.has(p)).length
+  const lowerCount = tpl.filter((p) => lower.has(p)).length
+  if (upperCount && !lowerCount) return 'Upper Body'
+  if (lowerCount && !upperCount) return 'Lower Body'
+  if (tpl.includes('core') && upperCount + lowerCount <= 1) return 'Core & Cardio'
+  return 'Full Body'
 }
 
 // Minimum main-phase exercises every session must contain.
@@ -187,15 +207,20 @@ export function mockGeneratePlan(input: GeneratePlanInput): PlanJSON {
   if (lastPct >= 0.85 && (!felt || felt.hard < felt.ok)) setBias = 1
   else if (lastPct < 0.6 || (felt && felt.hard > felt.ok + felt.easy)) setBias = -1
 
+  // Track main-phase names already used earlier in the week so nothing repeats
+  // across days. If we exhaust unique options we'll fall back to reuse — but
+  // only inside padToMinimum, and only when we truly can't fill the day.
+  const usedThisWeek = new Set<string>()
+
   for (let i = 0; i < dayCount; i++) {
     const tpl = tpls[i % tpls.length]
     let mainExercises = pickExercises(
-      tpl, input.equipment, input.injuries, input.medical_conditions, allowed, noJumping,
+      tpl, input.equipment, input.injuries, input.medical_conditions, allowed, noJumping, usedThisWeek,
     )
 
     if (mainExercises.length === 0) {
       mainExercises = pickExercises(
-        tpl, ['bodyweight'], input.injuries, input.medical_conditions, allowed, noJumping,
+        tpl, ['bodyweight'], input.injuries, input.medical_conditions, allowed, noJumping, usedThisWeek,
       )
     }
 
@@ -203,17 +228,20 @@ export function mockGeneratePlan(input: GeneratePlanInput): PlanJSON {
     const fillerPatterns: Pattern[] = ['core', 'lunge', 'pull', 'squat', 'hinge', 'push']
     mainExercises = padToMinimum(
       mainExercises, fillerPatterns, input.equipment, input.injuries,
-      input.medical_conditions, allowed, MIN_MAIN_EXERCISES, noJumping,
+      input.medical_conditions, allowed, MIN_MAIN_EXERCISES, noJumping, usedThisWeek,
     )
 
     if (input.last_week?.exercises_skipped?.length) {
       const skipped = new Set(input.last_week.exercises_skipped.map((s) => s.toLowerCase()))
       mainExercises = mainExercises.map((e) => {
         if (!skipped.has(e.name.toLowerCase())) return e
-        const alt = pickExercises([tpl[0]], ['bodyweight'], input.injuries, input.medical_conditions, allowed, noJumping)[0]
+        const alt = pickExercises([tpl[0]], ['bodyweight'], input.injuries, input.medical_conditions, allowed, noJumping, usedThisWeek)[0]
         return alt ?? e
       })
     }
+
+    // Record every main used this day so the remaining days avoid repeating them.
+    mainExercises.forEach((e) => usedThisWeek.add(e.name))
     if (setBias !== 0) {
       mainExercises = mainExercises.map((e) => ({
         ...e,
@@ -239,10 +267,12 @@ export function mockGeneratePlan(input: GeneratePlanInput): PlanJSON {
 
     const dayExercises = [...warmup, ...mainExercises, ...cooldown]
 
+    // Focus + label derived from THIS day's actual patterns — squats never
+    // land on a day labelled "Upper Body".
     const focus = tpl.slice(0, 2).map((t) => FOCUS_LABELS[t]).join(' + ')
     const label = useSplit === 'ppl'
       ? `Day ${i + 1} - ${['Push', 'Pull', 'Legs'][i % 3]}`
-      : `Day ${i + 1} - Full Body ${String.fromCharCode(65 + (i % 3))}`
+      : `Day ${i + 1} - ${dayNameFor(tpl)} ${String.fromCharCode(65 + (i % 3))}`
 
     days.push({
       day_label: label,

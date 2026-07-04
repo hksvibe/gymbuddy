@@ -348,6 +348,8 @@ function toExercise(entry: ExerciseEntry): Exercise {
 
 const INTENSITY_RANK: Record<ExerciseIntensity, number> = { light: 0, medium: 1, heavy: 2 }
 
+// `excludeNames` (optional) lets the caller enforce week-wide uniqueness by
+// passing a set of exercise names that have already been used on other days.
 export function pickExercises(
   patterns: Pattern[],
   equipment: Equipment[],
@@ -355,17 +357,17 @@ export function pickExercises(
   medical: MedicalCondition[],
   allowedIntensity: ExerciseIntensity[],
   noJumping = false,
+  excludeNames?: Set<string>,
 ): Exercise[] {
   const allowedSet = new Set(allowedIntensity)
-  // For each pattern, prefer the HIGHEST allowed intensity available. Someone
-  // with 'over_1y' experience should hit barbell compounds before dumbbells.
   const preferredRank = Math.max(...allowedIntensity.map((i) => INTENSITY_RANK[i]))
   const out: Exercise[] = []
-  const used = new Set<string>()
+  const usedThisDay = new Set<string>()
   for (const pat of patterns) {
     const candidates = EXERCISES.filter((e) => {
       if (e.pattern !== pat) return false
-      if (used.has(e.name)) return false
+      if (usedThisDay.has(e.name)) return false
+      if (excludeNames?.has(e.name)) return false     // week-wide dedup
       if (!allowedSet.has(e.intensity)) return false
       if (!e.uses_equipment.some((n) => equipment.includes(n))) return false
       if (e.avoid_injury.some((inj) => injuries.includes(inj))) return false
@@ -374,13 +376,12 @@ export function pickExercises(
       return true
     })
     if (candidates.length === 0) continue
-    // Sort by proximity to the preferred intensity — highest allowed first.
     candidates.sort((a, b) => {
       const da = Math.abs(INTENSITY_RANK[a.intensity] - preferredRank)
       const db = Math.abs(INTENSITY_RANK[b.intensity] - preferredRank)
       return da - db
     })
-    used.add(candidates[0].name)
+    usedThisDay.add(candidates[0].name)
     out.push(toExercise(candidates[0]))
   }
   return out
@@ -425,31 +426,47 @@ export function padToMinimum(
   allowedIntensity: ExerciseIntensity[],
   minCount: number,
   noJumping = false,
+  excludeNames?: Set<string>,
 ): Exercise[] {
   const out = [...current]
-  const used = new Set(out.map((e) => e.name))
+  const usedThisDay = new Set(out.map((e) => e.name))
+  const softExcluded = new Set(excludeNames ?? [])
   const allowedSet = new Set(allowedIntensity)
-  // If nothing else works, dig into bodyweight fallbacks — light is always OK.
   const fallbackAllowed = new Set<ExerciseIntensity>([...allowedIntensity, 'light'])
 
-  for (const pat of fallbackPatterns) {
-    if (out.length >= minCount) break
-    const candidates = EXERCISES
-      .filter((e) => e.pattern === pat)
-      .filter((e) => !used.has(e.name))
-      .filter((e) => !e.avoid_injury.some((i) => injuries.includes(i)))
-      .filter((e) => !e.avoid_medical.some((m) => medical.includes(m)))
-      .filter((e) => !noJumping || !/jump|jumping|burpee|box jump/i.test(e.name))
+  function findPick(allowWeekRepeat: boolean): Exercise | null {
+    for (const pat of fallbackPatterns) {
+      const candidates = EXERCISES
+        .filter((e) => e.pattern === pat)
+        .filter((e) => !usedThisDay.has(e.name))
+        .filter((e) => allowWeekRepeat || !softExcluded.has(e.name))
+        .filter((e) => !e.avoid_injury.some((i) => injuries.includes(i)))
+        .filter((e) => !e.avoid_medical.some((m) => medical.includes(m)))
+        .filter((e) => !noJumping || !/jump|jumping|burpee|box jump/i.test(e.name))
 
-    // Prefer allowed-intensity + user-equipment first, then light-bodyweight fallback.
-    let pick = candidates.find((e) =>
-      allowedSet.has(e.intensity) && e.uses_equipment.some((eq) => equipment.includes(eq)))
-    if (!pick) pick = candidates.find((e) =>
-      fallbackAllowed.has(e.intensity) && e.uses_equipment.includes('bodyweight'))
-    if (pick) {
-      out.push(toExercise(pick))
-      used.add(pick.name)
+      let pick = candidates.find((e) =>
+        allowedSet.has(e.intensity) && e.uses_equipment.some((eq) => equipment.includes(eq)))
+      if (!pick) pick = candidates.find((e) =>
+        fallbackAllowed.has(e.intensity) && e.uses_equipment.includes('bodyweight'))
+      if (pick) return toExercise(pick)
     }
+    return null
+  }
+
+  // First pass: honour the week-wide dedup. Nothing repeats.
+  while (out.length < minCount) {
+    const pick = findPick(false)
+    if (!pick) break
+    out.push(pick)
+    usedThisDay.add(pick.name)
+  }
+  // Second pass: if we're still short (inventory exhausted), allow week-wide
+  // repeats — the 4-exercise floor beats strict uniqueness.
+  while (out.length < minCount) {
+    const pick = findPick(true)
+    if (!pick) break
+    out.push(pick)
+    usedThisDay.add(pick.name)
   }
   return out
 }
