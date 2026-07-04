@@ -15,6 +15,12 @@ You MUST respect ALL of these simultaneously:
 - EQUIPMENT: use ONLY equipment in the provided list. If a movement needs gear they lack, substitute one that uses what they have (or bodyweight).
 - AGE, HEIGHT, WEIGHT: scale volume/complexity to age; use weight to set a realistic daily protein target (see DIET). BMI is informational only.
 - EXPERIENCE: beginners get simple foundational movements.
+- EXERCISE INTENSITY: every main-phase exercise MUST carry an "intensity" tag of "light" | "medium" | "heavy". Match the mix to the user's experience:
+    * never / under_1m → LIGHT only (bodyweight, resistance bands, high-rep isolation)
+    * 1_3m / 3_12m    → mix of LIGHT + MEDIUM (dumbbell + cable + machine compounds)
+    * over_1y         → MEDIUM + HEAVY (barbell compounds allowed, still beginner-safe form)
+  Warm-up and cool-down are ALWAYS "light" regardless of experience.
+  Never prescribe near-max lifts. Heavy still means 6-8 reps at RPE 7, not 1RM work.
 - GOAL: bias toward goal (fat_loss → compounds + light conditioning; muscle_gain → hypertrophy reps; strength → compound focus, beginner-safe; general_fitness → balanced).
 - MEDICAL & INJURIES (hard safety): lower_back → avoid loaded spinal flexion; knee → avoid deep loaded knee flexion; shoulder → avoid heavy overhead. high_bp/heart_condition/asthma → low intensity, no breath-holding/straining, add "consult a doctor". pregnancy → avoid supine after first trimester and high-impact; recommend professional guidance.
 - SESSION LENGTH: MINIMUM 25 minutes per session. Fit warm-up + main + cool-down inside the requested session_length (25, 30, or 45 minutes).
@@ -28,7 +34,7 @@ STRUCTURE FOR EVERY DAY (this is mandatory):
 
 Intensity: moderate reps (8-15), RPE 6-7. Never prescribe 1-rep-max or near-max lifts.
 
-For EACH exercise include: name, phase, sets, reps, rpe, one-line "why", short form_cue, youtube_search_query, uses_equipment (subset of the input equipment), safe_for_user, and TIMING:
+For EACH exercise include: name, phase, intensity, sets, reps, rpe, one-line "why", short form_cue, youtube_search_query, uses_equipment (subset of the input equipment), safe_for_user, and TIMING:
 - rest_seconds: rest between sets (30-60 for main-phase strength; 0 for warm-up / cool-down)
 - hold_seconds: how long to hold (planks, stretches). Omit for rep-based lifts.
 
@@ -66,6 +72,7 @@ Output schema:
     "exercises": [{
       "name": "<exercise name>",
       "phase": "warmup" | "main" | "cooldown",
+      "intensity": "light" | "medium" | "heavy",
       "sets": <int>,
       "reps": "<string e.g. 10-12 or 30 sec>",
       "rpe": "<string e.g. 6-7>",
@@ -120,6 +127,7 @@ interface PlanInput {
 interface Exercise {
   name: string
   phase: 'warmup' | 'main' | 'cooldown'
+  intensity: 'light' | 'medium' | 'heavy'
   sets: number
   reps: string
   rpe: string
@@ -176,6 +184,7 @@ export function tryParse(raw: string): PlanJSON | null {
       for (const e of d.exercises) {
         if (typeof e.name !== 'string' || typeof e.sets !== 'number') return null
         if (typeof e.youtube_search_query !== 'string') return null
+        if (!['light', 'medium', 'heavy'].includes(e.intensity)) return null
       }
     }
     for (const m of parsed.diet.meals) {

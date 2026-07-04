@@ -52,9 +52,16 @@ export interface UserProfile {
 
 export type ExercisePhase = 'warmup' | 'main' | 'cooldown'
 
+// Difficulty tier — scales with the user's training journey.
+// - light : bodyweight / bands / high-rep isolation, minimal skill or load
+// - medium: dumbbells / cables / foundational compounds, moderate reps
+// - heavy : barbell compounds / weighted work, still beginner-safe form focus
+export type ExerciseIntensity = 'light' | 'medium' | 'heavy'
+
 export interface Exercise {
   name: string
   phase: ExercisePhase
+  intensity: ExerciseIntensity
   sets: number
   reps: string
   rpe: string

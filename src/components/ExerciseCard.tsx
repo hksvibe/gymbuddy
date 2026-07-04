@@ -1,5 +1,5 @@
 import { Play, Check, X, Timer, AlertCircle } from 'lucide-react'
-import type { Exercise } from '../lib/types'
+import type { Exercise, ExerciseIntensity } from '../lib/types'
 import { emojiFor } from '../data/equipment'
 
 interface Props {
@@ -9,6 +9,20 @@ interface Props {
   onToggleSkip: () => void
   onWatchDemo: () => void
   onStartTimer: () => void
+}
+
+function IntensityPill({ intensity }: { intensity: ExerciseIntensity }) {
+  const styles = {
+    light:  'bg-success/10 text-success-dark border-success/30',
+    medium: 'bg-amber-50 text-amber-800 border-amber-300',
+    heavy:  'bg-red-50 text-red-700 border-red-300',
+  }[intensity]
+  const label = intensity[0].toUpperCase() + intensity.slice(1)
+  return (
+    <span className={`text-[10px] font-bold uppercase tracking-wider rounded-full px-1.5 py-0.5 border ${styles}`}>
+      {label}
+    </span>
+  )
 }
 
 export default function ExerciseCard({
@@ -26,7 +40,12 @@ export default function ExerciseCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-ink leading-snug">{exercise.name}</h3>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <h3 className="font-semibold text-ink leading-snug">{exercise.name}</h3>
+            {exercise.intensity && exercise.phase === 'main' && (
+              <IntensityPill intensity={exercise.intensity} />
+            )}
+          </div>
           <div className="mt-1 text-sm text-ink-soft">
             <span className="font-medium text-ink">{exercise.sets}</span>
             <span className="text-ink-soft"> sets × </span>

@@ -4,7 +4,8 @@
 import { httpsCallable } from 'firebase/functions'
 import { firebaseConfigured, fns } from './firebase'
 import {
-  estimateMinutes, padToMinimum, pickCooldown, pickExercises, pickWarmup, trimToFit,
+  allowedIntensities, estimateMinutes, padToMinimum, pickCooldown, pickExercises,
+  pickWarmup, trimToFit,
 } from '../data/exercises'
 import { mealsFor, proteinTargetFor } from '../data/meals'
 import { canonicalize } from '../data/equipment'
@@ -80,10 +81,14 @@ export function isPlanStale(plan: PlanJSON): boolean {
   const anyWarmup = plan.days.some((d) => d.exercises.some((e) => e.phase === 'warmup'))
   const anyCooldown = plan.days.some((d) => d.exercises.some((e) => e.phase === 'cooldown'))
   if (!anyWarmup || !anyCooldown) return true
-  // Every day should have at least 4 main-phase exercises.
+  // Every day should have at least 4 main-phase exercises, and each of them
+  // must carry an intensity tag (light | medium | heavy).
   for (const d of plan.days) {
     const mains = d.exercises.filter((e) => (e.phase ?? 'main') === 'main')
     if (mains.length < 4) return true
+    for (const m of mains) {
+      if (!m.intensity) return true
+    }
   }
   // Every meal should carry ingredients + recipe.
   const meals = plan.diet?.meals ?? []
@@ -172,6 +177,9 @@ export function mockGeneratePlan(input: GeneratePlanInput): PlanJSON {
   const dayCount = Math.max(2, Math.min(6, input.days_per_week))
   const noJumping = /no\s*jump|no\s*jumping/i.test(input.other_constraints)
   const sessionLen = Math.max(MIN_SESSION_MINUTES, input.session_length)
+  // Intensity tiers this user is allowed to see for main-phase exercises,
+  // based on their journey. Warm-up and cool-down stay light regardless.
+  const allowed = allowedIntensities(input.experience)
 
   const lastPct = input.last_week?.completion_pct ?? 1
   const felt = input.last_week?.felt_summary
@@ -181,24 +189,28 @@ export function mockGeneratePlan(input: GeneratePlanInput): PlanJSON {
 
   for (let i = 0; i < dayCount; i++) {
     const tpl = tpls[i % tpls.length]
-    let mainExercises = pickExercises(tpl, input.equipment, input.injuries, input.medical_conditions, noJumping)
+    let mainExercises = pickExercises(
+      tpl, input.equipment, input.injuries, input.medical_conditions, allowed, noJumping,
+    )
 
     if (mainExercises.length === 0) {
-      mainExercises = pickExercises(tpl, ['bodyweight'], input.injuries, input.medical_conditions, noJumping)
+      mainExercises = pickExercises(
+        tpl, ['bodyweight'], input.injuries, input.medical_conditions, allowed, noJumping,
+      )
     }
 
     // Enforce the 4-exercise floor for the main phase, drawing from unused patterns.
     const fillerPatterns: Pattern[] = ['core', 'lunge', 'pull', 'squat', 'hinge', 'push']
     mainExercises = padToMinimum(
       mainExercises, fillerPatterns, input.equipment, input.injuries,
-      input.medical_conditions, MIN_MAIN_EXERCISES, noJumping,
+      input.medical_conditions, allowed, MIN_MAIN_EXERCISES, noJumping,
     )
 
     if (input.last_week?.exercises_skipped?.length) {
       const skipped = new Set(input.last_week.exercises_skipped.map((s) => s.toLowerCase()))
       mainExercises = mainExercises.map((e) => {
         if (!skipped.has(e.name.toLowerCase())) return e
-        const alt = pickExercises([tpl[0]], ['bodyweight'], input.injuries, input.medical_conditions, noJumping)[0]
+        const alt = pickExercises([tpl[0]], ['bodyweight'], input.injuries, input.medical_conditions, allowed, noJumping)[0]
         return alt ?? e
       })
     }

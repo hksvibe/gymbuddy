@@ -97,6 +97,43 @@ describe('mockGeneratePlan — diet uses weight-scaled protein', () => {
   })
 })
 
+describe('mockGeneratePlan — intensity tiers scale with experience', () => {
+  it('gives a "never"-experience user LIGHT-only main exercises', () => {
+    const p = mockGeneratePlan({ ...baseProfile, experience: 'never', equipment: ['bodyweight', 'dumbbells', 'barbell', 'bench'] })
+    for (const d of p.days) {
+      for (const ex of d.exercises.filter((e) => e.phase === 'main')) {
+        expect(ex.intensity).toBe('light')
+      }
+    }
+  })
+
+  it('gives an "over_1y" user at least one heavy compound per day (light accessories still allowed)', () => {
+    const p = mockGeneratePlan({ ...baseProfile, experience: 'over_1y', equipment: ['dumbbells', 'barbell', 'bench', 'machines'] })
+    for (const d of p.days) {
+      const mains = d.exercises.filter((e) => e.phase === 'main')
+      const hasHeavyOrMedium = mains.some((e) => e.intensity === 'medium' || e.intensity === 'heavy')
+      expect(hasHeavyOrMedium).toBe(true)
+    }
+  })
+
+  it('warm-up and cool-down are always LIGHT regardless of experience', () => {
+    const p = mockGeneratePlan({ ...baseProfile, experience: 'over_1y', equipment: ['dumbbells', 'barbell', 'bench'] })
+    for (const d of p.days) {
+      for (const ex of d.exercises.filter((e) => e.phase !== 'main')) {
+        expect(ex.intensity).toBe('light')
+      }
+    }
+  })
+
+  it('1_3m user sees a mix of light + medium (no heavy)', () => {
+    const p = mockGeneratePlan({ ...baseProfile, experience: '1_3m', equipment: ['bodyweight', 'dumbbells', 'barbell', 'bench'] })
+    const intensities = new Set(
+      p.days.flatMap((d) => d.exercises.filter((e) => e.phase === 'main')).map((e) => e.intensity),
+    )
+    expect(intensities.has('heavy')).toBe(false)
+  })
+})
+
 describe('mockGeneratePlan — safety guardrails', () => {
   it('omits overhead pressing for shoulder injury', () => {
     const p = mockGeneratePlan({ ...baseProfile, injuries: ['shoulder'] })
