@@ -1,83 +1,70 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Check, ShieldCheck, Stethoscope } from 'lucide-react'
 import MobileShell from '../components/MobileShell'
 import PrimaryButton from '../components/PrimaryButton'
 import EquipmentCapture from '../components/EquipmentCapture'
-import ConsentScreen from '../components/ConsentScreen'
 import { saveProfile, savePlan } from '../lib/storage'
 import { generatePlan, profileToInput } from '../lib/api'
-import { recordConsent, requiresChronicConsent } from '../lib/consent'
+import {
+  CONSENT_BULLETS, CONSENT_TITLES, CONSENT_VERSIONS,
+  recordConsent, requiresChronicConsent,
+} from '../lib/consent'
 import type {
-  DietPref, Equipment, EquipmentSource, Experience, Goal, MedicalCondition,
+  DietPref, Equipment, Experience, Goal, MedicalCondition,
   Injury, SessionLength, UserProfile,
 } from '../lib/types'
 
 interface Draft {
+  // Step 1 — About you
   name: string
   age: string
   city: string
   height_cm: string
   weight_kg: string
+  // Step 2 — Your training
   goal?: Goal
   experience?: Experience
   days_per_week?: number
   session_length?: SessionLength
+  // Step 3 — Around you
   equipment: Equipment[]
-  equipment_source: EquipmentSource
-  equipment_photo_urls: string[]
   diet_pref?: DietPref
+  other_constraints: string
+  // Step 4 — Health + consent
   injuries: Injury[]
   medical_conditions: MedicalCondition[]
-  other_constraints: string
+  consent_general: boolean
+  consent_chronic: boolean
 }
 
-// Steps 0..10 are profile inputs. Step 11 is general consent. Step 12 is
-// chronic-condition consent (shown ONLY when the user declared a condition).
-const CORE_STEPS = 11
-const GENERAL_CONSENT_STEP = 11
-const CHRONIC_CONSENT_STEP = 12
+const TOTAL_STEPS = 4
 
 export default function Onboarding() {
   const nav = useNavigate()
   const [step, setStep] = useState(0)
   const [draft, setDraft] = useState<Draft>({
     name: '', age: '', city: '', height_cm: '', weight_kg: '',
-    equipment: [], equipment_source: 'manual', equipment_photo_urls: [],
-    injuries: [], medical_conditions: [], other_constraints: '',
+    equipment: [],
+    injuries: [], medical_conditions: [],
+    other_constraints: '',
+    consent_general: false, consent_chronic: false,
   })
   const [building, setBuilding] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const chronicRequired = requiresChronicConsent(draft.medical_conditions)
-  const totalSteps = CORE_STEPS + 1 + (chronicRequired ? 1 : 0)
 
-  const next = () => setStep((s) => Math.min(totalSteps - 1, s + 1))
+  const next = () => setStep((s) => Math.min(TOTAL_STEPS - 1, s + 1))
   const back = () => setStep((s) => Math.max(0, s - 1))
-
-  async function acceptGeneral() {
-    await recordConsent({
-      kind: 'general_ai',
-      medical_conditions: draft.medical_conditions,
-      injuries: draft.injuries,
-    })
-    if (chronicRequired) next()
-    else await finish()
-  }
-
-  async function acceptChronic() {
-    await recordConsent({
-      kind: 'chronic_condition',
-      medical_conditions: draft.medical_conditions,
-      injuries: draft.injuries,
-    })
-    await finish()
-  }
 
   async function finish() {
     if (!draft.goal || !draft.experience || !draft.days_per_week
         || !draft.session_length || !draft.diet_pref) return
-    setBuilding(true)
-    setError(null)
+    if (!draft.consent_general) return
+    if (chronicRequired && !draft.consent_chronic) return
+
+    setBuilding(true); setError(null)
     try {
       const profile: Omit<UserProfile, 'id' | 'created_at'> = {
         name: draft.name.trim() || 'Friend',
@@ -90,8 +77,8 @@ export default function Onboarding() {
         days_per_week: draft.days_per_week,
         session_length: draft.session_length,
         equipment: draft.equipment.length ? draft.equipment : ['bodyweight'],
-        equipment_source: draft.equipment_source,
-        equipment_photo_urls: draft.equipment_photo_urls,
+        equipment_source: 'manual',
+        equipment_photo_urls: [],
         diet_pref: draft.diet_pref,
         injuries: draft.injuries.length ? draft.injuries : ['none'],
         medical_conditions: draft.medical_conditions.length ? draft.medical_conditions : ['none'],
@@ -99,6 +86,21 @@ export default function Onboarding() {
         current_week: 1,
       }
       const saved = await saveProfile(profile)
+
+      // Log the consents against the newly-saved user, preserving audit trail.
+      await recordConsent({
+        kind: 'general_ai',
+        medical_conditions: profile.medical_conditions,
+        injuries: profile.injuries,
+      })
+      if (chronicRequired) {
+        await recordConsent({
+          kind: 'chronic_condition',
+          medical_conditions: profile.medical_conditions,
+          injuries: profile.injuries,
+        })
+      }
+
       const planJson = await generatePlan(profileToInput(saved, 1))
       await savePlan({
         week_number: 1,
@@ -132,435 +134,165 @@ export default function Onboarding() {
     )
   }
 
-  const isConsentStep = step === GENERAL_CONSENT_STEP || step === CHRONIC_CONSENT_STEP
-
   return (
     <MobileShell>
       <div className="flex flex-col flex-1 px-6 pt-8 pb-6">
-        {/* progress bar */}
-        <div className="flex items-center gap-2 mb-8">
-          <button onClick={step === 0 ? () => nav('/') : back} className="text-ink-soft text-sm">
-            ←
-          </button>
+        <div className="flex items-center gap-2 mb-6">
+          <button onClick={step === 0 ? () => nav('/') : back} className="text-ink-soft text-sm">←</button>
           <div className="flex-1 h-1.5 bg-lavender rounded-full overflow-hidden">
             <div
               className="h-full bg-violet-deep transition-all"
-              style={{ width: `${((step + 1) / totalSteps) * 100}%` }}
+              style={{ width: `${((step + 1) / TOTAL_STEPS) * 100}%` }}
             />
           </div>
-          <span className="text-xs text-ink-soft tabular-nums">{step + 1}/{totalSteps}</span>
+          <span className="text-xs text-ink-soft tabular-nums">{step + 1}/{TOTAL_STEPS}</span>
         </div>
 
-        <div className="flex-1 flex flex-col">
-          {step === 0 && <StepBasics draft={draft} setDraft={setDraft} />}
-          {step === 1 && <StepBody draft={draft} setDraft={setDraft} />}
-
-          {step === 2 && (
-            <StepChoice
-              title="Why are you here?"
-              subtitle="Your goal decides everything downstream — rep ranges, exercise choice, protein targets."
-              options={[
-                { v: 'fat_loss', label: 'Fat loss', sub: 'Look leaner, lose weight' },
-                { v: 'muscle_gain', label: 'Build muscle', sub: 'Get bigger, stronger' },
-                { v: 'general_fitness', label: 'General fitness', sub: 'Feel better, more energy' },
-                { v: 'strength', label: 'Get strong', sub: 'Lift heavier over time' },
-              ]}
-              value={draft.goal}
-              onChange={(v) => setDraft({ ...draft, goal: v as Goal })}
-            />
-          )}
-
-          {step === 3 && (
-            <StepChoice
-              title="How much have you trained before?"
-              subtitle="Be honest — beginners get simpler, safer movements. Nothing here is graded."
-              options={[
-                { v: 'never', label: "I've never trained" },
-                { v: 'under_1m', label: 'Under 1 month' },
-                { v: '1_3m', label: '1–3 months' },
-                { v: '3_12m', label: '3–12 months' },
-                { v: 'over_1y', label: 'Over a year' },
-              ]}
-              value={draft.experience}
-              onChange={(v) => setDraft({ ...draft, experience: v as Experience })}
-            />
-          )}
-
-          {step === 4 && (
-            <StepNumber
-              title="How many days a week can you actually train?"
-              subtitle="Pick what's realistic, not what's ideal. Consistency beats intensity — every time."
-              min={2} max={6}
-              value={draft.days_per_week}
-              onChange={(n) => setDraft({ ...draft, days_per_week: n })}
-            />
-          )}
-
-          {step === 5 && (
-            <StepChoice
-              title="How long is each session?"
-              subtitle="Warm-up + 4+ exercises + cool-down all fit inside this. Short is fine — showing up is the point."
-              options={[
-                { v: '25', label: '25 min', sub: 'Short & focused — the minimum' },
-                { v: '30', label: '30 min', sub: 'Sweet spot for most beginners' },
-                { v: '45', label: '45 min', sub: "I've got the time" },
-              ]}
-              value={draft.session_length?.toString()}
-              onChange={(v) => setDraft({ ...draft, session_length: Number(v) as SessionLength })}
-            />
-          )}
-
-          {step === 6 && (
-            <div>
-              <h2 className="text-2xl font-bold text-ink leading-tight">
-                What&apos;s at your gym?
-              </h2>
-              <p className="mt-2 text-ink-soft text-sm">
-                Tap everything you can use. Missed something? Update it later from My Gym.
-              </p>
-              <div className="mt-6">
-                <EquipmentCapture
-                  value={draft.equipment}
-                  onChange={(equipment) => setDraft({ ...draft, equipment })}
-                />
-              </div>
-            </div>
-          )}
-
-          {step === 7 && (
-            <StepChoice
-              title="What do you eat?"
-              subtitle="Halfway there 🎯 — this decides which meals we suggest. Change it later anytime."
-              options={[
-                { v: 'veg', label: 'Vegetarian' },
-                { v: 'egg_veg', label: 'Eggetarian' },
-                { v: 'non_veg', label: 'Non-vegetarian' },
-              ]}
-              value={draft.diet_pref}
-              onChange={(v) => setDraft({ ...draft, diet_pref: v as DietPref })}
-            />
-          )}
-
-          {step === 8 && (
-            <StepMulti
-              title="Any injuries?"
-              subtitle="So we keep painful movements out of your plan. Tap &apos;None&apos; if you&apos;re all good — that&apos;s a real answer, not a shortcut."
-              options={[
-                { v: 'none', label: 'None' },
-                { v: 'lower_back', label: 'Lower back' },
-                { v: 'knee', label: 'Knee' },
-                { v: 'shoulder', label: 'Shoulder' },
-                { v: 'neck', label: 'Neck' },
-                { v: 'wrist', label: 'Wrist' },
-              ]}
-              value={draft.injuries}
-              onChange={(values) => setDraft({ ...draft, injuries: values as Injury[] })}
-              required
-            />
-          )}
-
-          {step === 9 && (
-            <StepMulti
-              title="Any medical conditions?"
-              subtitle="Big one. We dial intensity for safety and skip risky patterns. Mandatory, and worth reading twice."
-              options={[
-                { v: 'none', label: 'None' },
-                { v: 'heart_condition', label: 'Heart condition' },
-                { v: 'high_bp', label: 'High blood pressure' },
-                { v: 'diabetes', label: 'Diabetes' },
-                { v: 'asthma', label: 'Asthma' },
-                { v: 'pregnancy', label: 'Pregnant' },
-              ]}
-              value={draft.medical_conditions}
-              onChange={(values) => setDraft({ ...draft, medical_conditions: values as MedicalCondition[] })}
-              required
-            />
-          )}
-
-          {step === 10 && (
-            <div>
-              <p className="text-[10px] text-violet-deep font-bold uppercase tracking-wider">
-                Almost there ⚡
-              </p>
-              <h2 className="mt-1 text-2xl font-bold text-ink leading-tight">
-                Anything else we should know?
-              </h2>
-              <p className="mt-2 text-ink-soft text-sm">
-                Real life goes here — &quot;no jumping, downstairs neighbour&quot;, &quot;evenings only&quot;, &quot;ankle still healing&quot;. Or leave it blank if nothing comes to mind.
-              </p>
-              <textarea
-                value={draft.other_constraints}
-                onChange={(e) => setDraft({ ...draft, other_constraints: e.target.value })}
-                placeholder="Optional — leave blank if nothing comes to mind."
-                rows={4}
-                className="mt-6 w-full rounded-xl border border-gray-200 px-4 py-3 text-ink focus:border-violet-deep focus:outline-none resize-none"
-              />
-              <p className="mt-2 text-xs text-ink-soft italic">
-                The plan will honour what you write here.
-              </p>
-            </div>
-          )}
-
-          {step === GENERAL_CONSENT_STEP && (
-            <ConsentScreen
-              kind="general_ai"
-              onAccept={acceptGeneral}
-              submittingLabel={chronicRequired ? 'Saving…' : 'Building your plan…'}
-            />
-          )}
-          {step === CHRONIC_CONSENT_STEP && chronicRequired && (
-            <ConsentScreen
-              kind="chronic_condition"
-              onAccept={acceptChronic}
-              submittingLabel="Building your plan…"
-            />
-          )}
-        </div>
-
-        {!isConsentStep && (
-          <div className="mt-6">
-            <PrimaryButton
-              onClick={next}
-              disabled={!canContinue(step, draft)}
-            >
-              Continue
-            </PrimaryButton>
-          </div>
+        {step === 0 && <StepAboutYou draft={draft} setDraft={setDraft} />}
+        {step === 1 && <StepTraining draft={draft} setDraft={setDraft} />}
+        {step === 2 && <StepAroundYou draft={draft} setDraft={setDraft} />}
+        {step === 3 && (
+          <StepHealthConsent
+            draft={draft}
+            setDraft={setDraft}
+            chronicRequired={chronicRequired}
+          />
         )}
+
+        <div className="mt-6">
+          <PrimaryButton
+            onClick={step === TOTAL_STEPS - 1 ? finish : next}
+            disabled={!canContinue(step, draft, chronicRequired)}
+          >
+            {step === TOTAL_STEPS - 1 ? 'Build my plan' : 'Continue'}
+          </PrimaryButton>
+        </div>
       </div>
     </MobileShell>
   )
 }
 
-function canContinue(step: number, d: Draft) {
-  if (step === 0) return d.name.trim().length > 0 && Number(d.age) >= 13
-  if (step === 1) {
+function canContinue(step: number, d: Draft, chronicRequired: boolean): boolean {
+  if (step === 0) {
     const h = Number(d.height_cm), w = Number(d.weight_kg)
-    return h >= 120 && h <= 230 && w >= 30 && w <= 250
+    return d.name.trim().length > 0
+      && Number(d.age) >= 13
+      && h >= 120 && h <= 230
+      && w >= 30 && w <= 250
   }
-  if (step === 2) return !!d.goal
-  if (step === 3) return !!d.experience
-  if (step === 4) return !!d.days_per_week
-  if (step === 5) return !!d.session_length
-  if (step === 6) return d.equipment.length > 0
-  if (step === 7) return !!d.diet_pref
-  if (step === 8) return d.injuries.length > 0
-  if (step === 9) return d.medical_conditions.length > 0
-  if (step === 10) return true
+  if (step === 1) {
+    return !!d.goal && !!d.experience && !!d.days_per_week && !!d.session_length
+  }
+  if (step === 2) {
+    return d.equipment.length > 0 && !!d.diet_pref
+  }
+  if (step === 3) {
+    if (d.injuries.length === 0 || d.medical_conditions.length === 0) return false
+    if (!d.consent_general) return false
+    if (chronicRequired && !d.consent_chronic) return false
+    return true
+  }
   return false
 }
 
-function StepBasics({
-  draft, setDraft,
-}: { draft: Draft, setDraft: (d: Draft) => void }) {
+// ---------- Step 1 · About you ----------
+function StepAboutYou({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft) => void }) {
+  const h = Number(draft.height_cm), w = Number(draft.weight_kg)
+  const bmi = h > 0 && w > 0 ? (w / ((h / 100) ** 2)).toFixed(1) : null
+
   return (
-    <div>
-      <div className="mb-6 rounded-2xl bg-lavender border border-violet-deep/15 p-4">
-        <p className="text-[10px] text-violet-deep font-bold uppercase tracking-wider mb-1">
-          Heads up ✨
-        </p>
+    <div className="flex-1">
+      <div className="mb-5 rounded-2xl bg-lavender border border-violet-deep/15 p-3.5">
+        <p className="text-[10px] text-violet-deep font-bold uppercase tracking-wider mb-1">Heads up ✨</p>
         <p className="text-sm text-ink leading-snug">
-          The next ~12 questions might feel like a lot. Every answer sharpens your plan — safer, more personal, less generic. Under 90 seconds, promise.
+          Just 4 quick steps. Every answer sharpens your plan — safer, more personal, less generic.
         </p>
       </div>
 
-      <h2 className="text-2xl font-bold text-ink leading-tight">First, the basics.</h2>
-      <p className="mt-2 text-ink-soft text-sm">A name to greet you by. That&apos;s it.</p>
+      <SectionTitle title="About you" subtitle="Basics + body — so we can size everything right." />
 
-      <div className="mt-8 space-y-4">
+      <div className="space-y-3">
         <Field label="Your name">
-          <input
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            placeholder="e.g. Rohan"
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-ink focus:border-violet-deep focus:outline-none"
-          />
+          <TextInput value={draft.name} onChange={(v) => setDraft({ ...draft, name: v })} placeholder="e.g. Rohan" />
         </Field>
-        <Field label="Age">
-          <input
-            value={draft.age}
-            onChange={(e) => setDraft({ ...draft, age: e.target.value.replace(/\D/g, '') })}
-            placeholder="e.g. 25"
-            inputMode="numeric"
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-ink focus:border-violet-deep focus:outline-none"
-          />
-        </Field>
-        <Field label="City (optional)">
-          <input
-            value={draft.city}
-            onChange={(e) => setDraft({ ...draft, city: e.target.value })}
-            placeholder="e.g. Pune"
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-ink focus:border-violet-deep focus:outline-none"
-          />
-        </Field>
-      </div>
-    </div>
-  )
-}
-
-function StepBody({
-  draft, setDraft,
-}: { draft: Draft, setDraft: (d: Draft) => void }) {
-  const h = Number(draft.height_cm)
-  const w = Number(draft.weight_kg)
-  const bmi = h && w ? (w / ((h / 100) ** 2)).toFixed(1) : null
-  return (
-    <div>
-      <h2 className="text-2xl font-bold text-ink leading-tight">Your body.</h2>
-      <p className="mt-2 text-ink-soft text-sm">
-        Real numbers here mean a real protein target and exercises picked for your build. Guesses are fine — you can update this anytime.
-      </p>
-
-      <div className="mt-8 space-y-4">
-        <Field label="Height (cm)">
-          <input
-            value={draft.height_cm}
-            onChange={(e) => setDraft({ ...draft, height_cm: e.target.value.replace(/\D/g, '').slice(0, 3) })}
-            placeholder="e.g. 172"
-            inputMode="numeric"
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-ink focus:border-violet-deep focus:outline-none"
-          />
-        </Field>
-        <Field label="Weight (kg)">
-          <input
-            value={draft.weight_kg}
-            onChange={(e) => setDraft({ ...draft, weight_kg: e.target.value.replace(/[^\d.]/g, '').slice(0, 5) })}
-            placeholder="e.g. 68"
-            inputMode="decimal"
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-ink focus:border-violet-deep focus:outline-none"
-          />
-        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Age">
+            <TextInput value={draft.age} onChange={(v) => setDraft({ ...draft, age: v.replace(/\D/g, '') })} placeholder="25" inputMode="numeric" />
+          </Field>
+          <Field label="City (optional)">
+            <TextInput value={draft.city} onChange={(v) => setDraft({ ...draft, city: v })} placeholder="Pune" />
+          </Field>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Height (cm)">
+            <TextInput value={draft.height_cm} onChange={(v) => setDraft({ ...draft, height_cm: v.replace(/\D/g, '').slice(0, 3) })} placeholder="172" inputMode="numeric" />
+          </Field>
+          <Field label="Weight (kg)">
+            <TextInput value={draft.weight_kg} onChange={(v) => setDraft({ ...draft, weight_kg: v.replace(/[^\d.]/g, '').slice(0, 5) })} placeholder="68" inputMode="decimal" />
+          </Field>
+        </div>
       </div>
 
       {bmi && Number(bmi) > 0 && (
-        <div className="mt-6 rounded-2xl bg-lavender border border-violet-deep/15 px-4 py-3">
-          <p className="text-xs text-ink-soft uppercase tracking-wider">Your BMI</p>
-          <p className="mt-1 text-2xl font-bold text-violet-deep">{bmi}</p>
-          <p className="text-xs text-ink-soft mt-1">
-            {Number(bmi) < 18.5 ? 'Under normal range' :
-             Number(bmi) < 25 ? 'In normal range' :
-             Number(bmi) < 30 ? 'Above normal range' :
-             'Well above normal range'} · non-medical guide only
-          </p>
+        <div className="mt-4 rounded-2xl bg-lavender border border-violet-deep/15 px-4 py-3 flex items-baseline justify-between">
+          <div>
+            <p className="text-[10px] text-violet-deep font-bold uppercase tracking-wider">Your BMI</p>
+            <p className="text-xs text-ink-soft mt-0.5">
+              {Number(bmi) < 18.5 ? 'Under normal range' :
+               Number(bmi) < 25 ? 'In normal range' :
+               Number(bmi) < 30 ? 'Above normal range' :
+               'Well above normal range'} · non-medical guide
+            </p>
+          </div>
+          <p className="text-2xl font-bold text-violet-deep tabular-nums">{bmi}</p>
         </div>
       )}
     </div>
   )
 }
 
-function Field({ label, children }: { label: string, children: React.ReactNode }) {
+// ---------- Step 2 · Your training ----------
+function StepTraining({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft) => void }) {
   return (
-    <label className="block">
-      <span className="text-sm font-medium text-ink-soft">{label}</span>
-      <div className="mt-1.5">{children}</div>
-    </label>
-  )
-}
+    <div className="flex-1">
+      <SectionTitle title="Your training" subtitle="What you want and what fits your life." />
 
-interface Option { v: string, label: string, sub?: string }
+      <SubLabel>Main goal</SubLabel>
+      <ChoiceGrid<Goal>
+        options={[
+          { v: 'fat_loss', label: 'Fat loss' },
+          { v: 'muscle_gain', label: 'Build muscle' },
+          { v: 'general_fitness', label: 'General fitness' },
+          { v: 'strength', label: 'Get strong' },
+        ]}
+        value={draft.goal}
+        onChange={(v) => setDraft({ ...draft, goal: v })}
+      />
 
-function StepChoice({
-  title, subtitle, options, value, onChange,
-}: {
-  title: string, subtitle?: string, options: Option[], value: string | number | undefined,
-  onChange: (v: string) => void,
-}) {
-  return (
-    <div>
-      <h2 className="text-2xl font-bold text-ink leading-tight">{title}</h2>
-      {subtitle && <p className="mt-2 text-ink-soft text-sm">{subtitle}</p>}
-      <div className="mt-8 space-y-2.5">
-        {options.map((o) => {
-          const active = String(value) === String(o.v)
-          return (
-            <button
-              key={o.v}
-              onClick={() => onChange(o.v)}
-              className={`w-full text-left rounded-2xl px-5 py-4 border-2 transition ${
-                active
-                  ? 'border-violet-deep bg-lavender'
-                  : 'border-gray-100 bg-white hover:border-gray-200'
-              }`}
-            >
-              <div className="font-semibold text-ink">{o.label}</div>
-              {o.sub && <div className="text-sm text-ink-soft mt-0.5">{o.sub}</div>}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
+      <SubLabel>How much you've trained</SubLabel>
+      <ChoiceGrid<Experience>
+        options={[
+          { v: 'never', label: 'Never' },
+          { v: 'under_1m', label: 'Under 1m' },
+          { v: '1_3m', label: '1–3m' },
+          { v: '3_12m', label: '3–12m' },
+          { v: 'over_1y', label: 'Over 1y' },
+        ]}
+        value={draft.experience}
+        onChange={(v) => setDraft({ ...draft, experience: v })}
+      />
 
-function StepMulti({
-  title, subtitle, options, value, onChange, required,
-}: {
-  title: string, subtitle?: string, options: Option[], value: string[],
-  onChange: (v: string[]) => void, required?: boolean,
-}) {
-  function toggle(v: string) {
-    if (v === 'none') {
-      onChange(value.includes('none') ? [] : ['none'])
-      return
-    }
-    const next = value.filter((x) => x !== 'none')
-    if (next.includes(v)) onChange(next.filter((x) => x !== v))
-    else onChange([...next, v])
-  }
-  return (
-    <div>
-      <h2 className="text-2xl font-bold text-ink leading-tight">{title}</h2>
-      {subtitle && <p className="mt-2 text-ink-soft text-sm">{subtitle}</p>}
-      <div className="mt-8 flex flex-wrap gap-2">
-        {options.map((o) => {
-          const active = value.includes(o.v)
-          return (
-            <button
-              key={o.v}
-              onClick={() => toggle(o.v)}
-              className={`rounded-full px-4 py-2.5 text-sm font-medium border-2 transition ${
-                active
-                  ? 'border-violet-deep bg-violet-deep text-white'
-                  : 'border-gray-200 bg-white text-ink hover:border-gray-300'
-              }`}
-            >
-              {o.label}
-            </button>
-          )
-        })}
-      </div>
-      {required && (
-        <p className="text-xs text-ink-soft mt-4 italic">
-          This question is mandatory — your plan is built around it.
-        </p>
-      )}
-    </div>
-  )
-}
-
-function StepNumber({
-  title, subtitle, min, max, value, onChange,
-}: {
-  title: string, subtitle?: string, min: number, max: number,
-  value: number | undefined, onChange: (n: number) => void,
-}) {
-  const opts = []
-  for (let i = min; i <= max; i++) opts.push(i)
-  return (
-    <div>
-      <h2 className="text-2xl font-bold text-ink leading-tight">{title}</h2>
-      {subtitle && <p className="mt-2 text-ink-soft text-sm">{subtitle}</p>}
-      <div className="mt-10 grid grid-cols-5 gap-2.5">
-        {opts.map((n) => {
-          const active = value === n
+      <SubLabel>Days per week you can train</SubLabel>
+      <div className="grid grid-cols-5 gap-2">
+        {[2, 3, 4, 5, 6].map((n) => {
+          const active = draft.days_per_week === n
           return (
             <button
               key={n}
-              onClick={() => onChange(n)}
-              className={`aspect-square rounded-2xl text-2xl font-bold border-2 transition ${
-                active
-                  ? 'border-violet-deep bg-violet-deep text-white'
-                  : 'border-gray-200 bg-white text-ink hover:border-gray-300'
+              onClick={() => setDraft({ ...draft, days_per_week: n })}
+              className={`aspect-square rounded-xl text-xl font-bold border-2 transition ${
+                active ? 'border-violet-deep bg-violet-deep text-white'
+                       : 'border-gray-200 bg-white text-ink hover:border-gray-300'
               }`}
             >
               {n}
@@ -568,7 +300,280 @@ function StepNumber({
           )
         })}
       </div>
-      <p className="text-xs text-ink-soft mt-4 text-center">days per week</p>
+
+      <SubLabel>Session length</SubLabel>
+      <ChoiceGrid<SessionLength>
+        options={[
+          { v: 25, label: '25 min' },
+          { v: 30, label: '30 min' },
+          { v: 45, label: '45 min' },
+        ]}
+        value={draft.session_length}
+        onChange={(v) => setDraft({ ...draft, session_length: v })}
+      />
+    </div>
+  )
+}
+
+// ---------- Step 3 · Around you ----------
+function StepAroundYou({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft) => void }) {
+  return (
+    <div className="flex-1">
+      <SectionTitle title="Around you" subtitle="Equipment, food, and anything special." />
+
+      <SubLabel>Equipment (tap what you have)</SubLabel>
+      <EquipmentCapture value={draft.equipment} onChange={(equipment) => setDraft({ ...draft, equipment })} />
+
+      <SubLabel>Diet preference</SubLabel>
+      <ChoiceGrid<DietPref>
+        options={[
+          { v: 'veg', label: 'Vegetarian' },
+          { v: 'egg_veg', label: 'Eggetarian' },
+          { v: 'non_veg', label: 'Non-veg' },
+        ]}
+        value={draft.diet_pref}
+        onChange={(v) => setDraft({ ...draft, diet_pref: v })}
+      />
+
+      <SubLabel>Anything else? (optional)</SubLabel>
+      <textarea
+        value={draft.other_constraints}
+        onChange={(e) => setDraft({ ...draft, other_constraints: e.target.value })}
+        placeholder='e.g. "no jumping — downstairs neighbour", "evenings only"'
+        rows={3}
+        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-ink text-sm focus:border-violet-deep focus:outline-none resize-none"
+      />
+    </div>
+  )
+}
+
+// ---------- Step 4 · Health + consent ----------
+function StepHealthConsent({
+  draft, setDraft, chronicRequired,
+}: {
+  draft: Draft; setDraft: (d: Draft) => void; chronicRequired: boolean;
+}) {
+  return (
+    <div className="flex-1">
+      <SectionTitle title="Health & consent" subtitle="Last one — keeps you safe." />
+
+      <SubLabel>Any injuries?</SubLabel>
+      <MultiChips
+        options={[
+          { v: 'none', label: 'None' },
+          { v: 'lower_back', label: 'Lower back' },
+          { v: 'knee', label: 'Knee' },
+          { v: 'shoulder', label: 'Shoulder' },
+          { v: 'neck', label: 'Neck' },
+          { v: 'wrist', label: 'Wrist' },
+        ]}
+        value={draft.injuries}
+        onChange={(values) => setDraft({ ...draft, injuries: values as Injury[] })}
+      />
+
+      <SubLabel>Any medical conditions?</SubLabel>
+      <MultiChips
+        options={[
+          { v: 'none', label: 'None' },
+          { v: 'heart_condition', label: 'Heart' },
+          { v: 'high_bp', label: 'High BP' },
+          { v: 'diabetes', label: 'Diabetes' },
+          { v: 'asthma', label: 'Asthma' },
+          { v: 'pregnancy', label: 'Pregnant' },
+        ]}
+        value={draft.medical_conditions}
+        onChange={(values) => setDraft({ ...draft, medical_conditions: values as MedicalCondition[] })}
+      />
+
+      <SubLabel>Consent</SubLabel>
+      <ConsentCard
+        id="consent-general"
+        icon={<ShieldCheck className="w-4 h-4" />}
+        title={CONSENT_TITLES.general_ai}
+        bullets={CONSENT_BULLETS.general_ai}
+        version={CONSENT_VERSIONS.general_ai}
+        checked={draft.consent_general}
+        onChange={(v) => setDraft({ ...draft, consent_general: v })}
+        acceptLabel="I understand and agree"
+        tint="violet"
+      />
+      {chronicRequired && (
+        <div className="mt-3">
+          <ConsentCard
+            id="consent-chronic"
+            icon={<Stethoscope className="w-4 h-4" />}
+            title={CONSENT_TITLES.chronic_condition}
+            bullets={CONSENT_BULLETS.chronic_condition}
+            version={CONSENT_VERSIONS.chronic_condition}
+            checked={draft.consent_chronic}
+            onChange={(v) => setDraft({ ...draft, consent_chronic: v })}
+            acceptLabel="I will consult my doctor"
+            tint="amber"
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================= shared primitives =============================
+
+function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="mb-4">
+      <h2 className="text-xl font-bold text-ink leading-tight">{title}</h2>
+      <p className="mt-1 text-xs text-ink-soft">{subtitle}</p>
+    </div>
+  )
+}
+
+function SubLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mt-5 mb-2 text-[11px] font-bold text-ink-soft uppercase tracking-wider">
+      {children}
+    </p>
+  )
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-medium text-ink-soft">{label}</span>
+      <div className="mt-1">{children}</div>
+    </label>
+  )
+}
+
+function TextInput({
+  value, onChange, placeholder, inputMode,
+}: {
+  value: string; onChange: (v: string) => void; placeholder?: string;
+  inputMode?: 'text' | 'numeric' | 'decimal';
+}) {
+  return (
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      inputMode={inputMode ?? 'text'}
+      className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-ink text-sm focus:border-violet-deep focus:outline-none"
+    />
+  )
+}
+
+interface ChoiceGridOption<T> { v: T; label: string }
+function ChoiceGrid<T extends string | number>({
+  options, value, onChange, cols,
+}: {
+  options: ChoiceGridOption<T>[]; value: T | undefined; onChange: (v: T) => void; cols?: number;
+}) {
+  const gridClass = cols === 5 ? 'grid-cols-5' : options.length >= 4 ? 'grid-cols-2' : 'grid-cols-3'
+  return (
+    <div className={`grid ${gridClass} gap-2`}>
+      {options.map((o) => {
+        const active = value === o.v
+        return (
+          <button
+            key={String(o.v)}
+            onClick={() => onChange(o.v)}
+            className={`rounded-xl px-3 py-2.5 text-sm font-semibold border-2 transition ${
+              active ? 'border-violet-deep bg-lavender text-violet-deep'
+                     : 'border-gray-200 bg-white text-ink hover:border-gray-300'
+            }`}
+          >
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function MultiChips({
+  options, value, onChange,
+}: {
+  options: { v: string; label: string }[];
+  value: string[];
+  onChange: (v: string[]) => void;
+}) {
+  function toggle(v: string) {
+    if (v === 'none') { onChange(value.includes('none') ? [] : ['none']); return }
+    const next = value.filter((x) => x !== 'none')
+    if (next.includes(v)) onChange(next.filter((x) => x !== v))
+    else onChange([...next, v])
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => {
+        const active = value.includes(o.v)
+        return (
+          <button
+            key={o.v}
+            onClick={() => toggle(o.v)}
+            className={`rounded-full px-3.5 py-2 text-sm font-medium border-2 transition ${
+              active ? 'border-violet-deep bg-violet-deep text-white'
+                     : 'border-gray-200 bg-white text-ink hover:border-gray-300'
+            }`}
+          >
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function ConsentCard({
+  id, icon, title, bullets, version, checked, onChange, acceptLabel, tint,
+}: {
+  id: string;
+  icon: React.ReactNode;
+  title: string;
+  bullets: string[];
+  version: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  acceptLabel: string;
+  tint: 'violet' | 'amber';
+}) {
+  const tintClass = tint === 'amber'
+    ? 'bg-amber-50 border-amber-200 text-amber-800'
+    : 'bg-lavender border-violet-deep/20 text-violet-deep'
+
+  // Wrap the whole accept row in a button — the tap target is unambiguous
+  // and React state updates every time. (sr-only inputs behave inconsistently
+  // when triggered via label click on some browsers.)
+  return (
+    <div className={`rounded-2xl border p-3 ${tintClass}`}>
+      <div className="flex items-center gap-2 mb-2">
+        <span>{icon}</span>
+        <p className="text-sm font-bold">{title}</p>
+      </div>
+      <ul className="space-y-1 mb-3">
+        {bullets.map((b, i) => (
+          <li key={i} className="text-xs text-ink leading-snug flex items-start gap-1.5">
+            <span className="w-1 h-1 rounded-full bg-current mt-1.5 opacity-60 flex-shrink-0" />
+            <span>{b}</span>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        aria-pressed={checked}
+        aria-labelledby={`${id}-label`}
+        className="w-full flex items-start gap-2.5 cursor-pointer select-none bg-white/80 rounded-xl px-3 py-2.5 border border-current/10 text-left transition active:scale-[0.99]"
+      >
+        <span
+          className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition ${
+            checked ? 'border-violet-deep bg-violet-deep' : 'border-gray-300 bg-white'
+          }`}
+        >
+          {checked && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3.5} />}
+        </span>
+        <span id={`${id}-label`} className="text-xs font-semibold text-ink leading-snug">{acceptLabel}</span>
+      </button>
+      <p className="text-[9px] text-ink-soft mt-2">Version {version} · logged with a timestamp on tap.</p>
     </div>
   )
 }
