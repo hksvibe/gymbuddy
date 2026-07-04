@@ -1,8 +1,9 @@
 // Google Sign-in + Guest (Anonymous) + anon→Google account linking.
 
 import {
-  GoogleAuthProvider, signInWithPopup, signInAnonymously,
-  signOut as fbSignOut, linkWithPopup, onAuthStateChanged, type User,
+  GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
+  signInAnonymously, signOut as fbSignOut, linkWithPopup, linkWithRedirect,
+  onAuthStateChanged, type User,
 } from 'firebase/auth'
 import { auth, firebaseConfigured } from './firebase'
 
@@ -84,34 +85,97 @@ export async function signInAsGuest(): Promise<AuthUser> {
   return localGuestUser()
 }
 
+// Some browsers (iOS Safari, in-app WebViews, PWA standalone mode) block
+// third-party popups. Redirect is more reliable on those; popup is nicer on
+// desktop. Detect once and pick the right flow.
+function popupBlockedLikely(): boolean {
+  try {
+    const ua = navigator.userAgent
+    const isStandalone =
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+      || (navigator as unknown as { standalone?: boolean }).standalone === true
+    const isIosSafari = /iP(ad|hone|od)/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua)
+    const isInAppBrowser = /(FBAN|FBAV|Instagram|Line|Twitter|WhatsApp)/i.test(ua)
+    return isStandalone || isIosSafari || isInAppBrowser
+  } catch { return false }
+}
+
+// Codes that mean "popup won't work here" — retry with redirect.
+function isPopupFailure(code?: string): boolean {
+  return code === 'auth/popup-blocked'
+    || code === 'auth/popup-closed-by-user'
+    || code === 'auth/cancelled-popup-request'
+    || code === 'auth/operation-not-supported-in-this-environment'
+}
+
 // Google sign-in. If the user is currently anonymous, tries to link the Google
 // credential to preserve their guest data. Falls back to a fresh Google sign-in
 // (accepting data loss) if the Google account is already in use elsewhere.
-export async function signInWithGoogle(): Promise<AuthUser> {
+// Falls back to redirect flow when the browser can't open popups.
+export async function signInWithGoogle(): Promise<AuthUser | null> {
   if (!firebaseConfigured || !auth) {
     throw new Error('Firebase not configured — Google sign-in unavailable in local-only mode.')
   }
   const provider = new GoogleAuthProvider()
   provider.setCustomParameters({ prompt: 'select_account' })
+  const useRedirect = popupBlockedLikely()
 
   const current = auth.currentUser
   if (current?.isAnonymous) {
     try {
+      if (useRedirect) {
+        await linkWithRedirect(current, provider)
+        return null  // browser navigates away; caller gets the user via completeRedirectSignIn on return
+      }
       const cred = await linkWithPopup(current, provider)
       return toAuthUser(cred.user)
     } catch (err) {
       const code = (err as { code?: string }).code
+      // Popup path failed — retry with redirect.
+      if (isPopupFailure(code)) {
+        await linkWithRedirect(current, provider)
+        return null
+      }
       if (code === 'auth/credential-already-in-use' || code === 'auth/email-already-in-use') {
-        // The Google account is already registered — sign in with it directly.
-        // Guest data stays in Firestore under the old anon UID but becomes unreachable.
-        const cred = await signInWithPopup(auth, provider)
-        return toAuthUser(cred.user)
+        // Google account is already registered elsewhere — sign in with it directly.
+        return await signInDirect(provider, useRedirect)
       }
       throw err
     }
   }
-  const cred = await signInWithPopup(auth, provider)
-  return toAuthUser(cred.user)
+  return await signInDirect(provider, useRedirect)
+}
+
+async function signInDirect(provider: GoogleAuthProvider, useRedirect: boolean): Promise<AuthUser | null> {
+  if (!auth) throw new Error('Firebase auth not initialised')
+  try {
+    if (useRedirect) {
+      await signInWithRedirect(auth, provider)
+      return null
+    }
+    const cred = await signInWithPopup(auth, provider)
+    return toAuthUser(cred.user)
+  } catch (err) {
+    const code = (err as { code?: string }).code
+    if (isPopupFailure(code)) {
+      await signInWithRedirect(auth, provider)
+      return null
+    }
+    throw err
+  }
+}
+
+// Call once on app boot — if we're returning from a redirect flow, this
+// completes the sign-in. Silent no-op otherwise.
+export async function completeRedirectSignIn(): Promise<AuthUser | null> {
+  if (!firebaseConfigured || !auth) return null
+  try {
+    const cred = await getRedirectResult(auth)
+    return cred?.user ? toAuthUser(cred.user) : null
+  } catch (e) {
+    console.warn('completeRedirectSignIn failed', e)
+    return null
+  }
 }
 
 export async function signOutUser(): Promise<void> {
