@@ -1,78 +1,27 @@
-import { useState } from 'react'
-import { Loader2, Sparkles } from 'lucide-react'
-import PhotoUpload from './PhotoUpload'
 import { EQUIPMENT_CATALOG, emojiFor, labelFor } from '../data/equipment'
-import { detectEquipment } from '../lib/api'
-import type { Equipment, EquipmentSource } from '../lib/types'
+import type { Equipment } from '../lib/types'
 
 interface Props {
   value: Equipment[]
-  source: EquipmentSource
-  photoUrls: string[]
-  onChange: (next: { equipment: Equipment[]; source: EquipmentSource; photoUrls: string[] }) => void
+  onChange: (next: Equipment[]) => void
 }
 
-export default function EquipmentCapture({ value, source, photoUrls, onChange }: Props) {
-  const [scanning, setScanning] = useState(false)
-  const [scannedAt, setScannedAt] = useState<number | null>(null)
-
+// Manual chip-based equipment selection. Photo capture was removed in favour
+// of a simpler, more predictable picker — users tap what they have.
+export default function EquipmentCapture({ value, onChange }: Props) {
   function toggle(id: Equipment) {
     const has = value.includes(id)
-    const nextEq = has ? value.filter((e) => e !== id) : [...value, id]
-    onChange({
-      equipment: nextEq,
-      source: photoUrls.length > 0 ? 'both' : 'manual',
-      photoUrls,
-    })
-  }
-
-  async function onPhotosUploaded(urls: string[]) {
-    if (urls.length === 0) {
-      onChange({ equipment: value, source: 'manual', photoUrls: [] })
-      return
-    }
-    setScanning(true)
-    try {
-      const detected = await detectEquipment(urls)
-      const merged = Array.from(new Set([...value, ...detected]))
-      onChange({
-        equipment: merged,
-        source: 'photo',
-        photoUrls: urls,
-      })
-      setScannedAt(Date.now())
-    } finally {
-      setScanning(false)
-    }
+    onChange(has ? value.filter((e) => e !== id) : [...value, id])
   }
 
   return (
     <div>
-      <div className="rounded-2xl bg-white border border-gray-100 p-4">
-        <p className="text-sm font-semibold text-ink">Snap your gym</p>
-        <p className="text-xs text-ink-soft mt-0.5">
-          Photo of the rack works fastest — we&apos;ll detect the equipment for you.
-        </p>
-        <div className="mt-3">
-          <PhotoUpload onPhotosUploaded={onPhotosUploaded} existingUrls={photoUrls} />
-        </div>
-        {scanning && (
-          <p className="mt-3 text-sm text-violet-deep flex items-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Detecting equipment…
-          </p>
-        )}
-        {scannedAt && !scanning && (
-          <p className="mt-3 text-sm text-success-dark flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4" />
-            Detected — review and edit below.
-          </p>
-        )}
-      </div>
+      <p className="text-sm font-semibold text-ink">Tick everything you have access to</p>
+      <p className="text-xs text-ink-soft mt-0.5">
+        We&apos;ll only prescribe exercises you can actually do. You can update this from My Gym anytime.
+      </p>
 
-      <p className="mt-5 text-sm font-semibold text-ink">Or pick manually</p>
-      <p className="text-xs text-ink-soft mt-0.5">Tap everything available at your gym.</p>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         {EQUIPMENT_CATALOG.map((e) => {
           const active = value.includes(e.id)
           return (
@@ -102,10 +51,6 @@ export default function EquipmentCapture({ value, source, photoUrls, onChange }:
           </p>
         </div>
       )}
-
-      <p className="text-xs text-ink-soft italic mt-3">
-        Source: {source}{photoUrls.length > 0 && ` · ${photoUrls.length} photo${photoUrls.length > 1 ? 's' : ''}`}
-      </p>
     </div>
   )
 }

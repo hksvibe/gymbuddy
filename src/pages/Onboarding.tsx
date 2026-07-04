@@ -216,21 +216,12 @@ export default function Onboarding() {
                 What&apos;s at your gym?
               </h2>
               <p className="mt-2 text-ink-soft text-sm">
-                Snap a photo or pick manually. We&apos;ll only prescribe exercises you can actually do.
+                Tap everything you can use. Missed something? Update it later from My Gym.
               </p>
               <div className="mt-6">
                 <EquipmentCapture
                   value={draft.equipment}
-                  source={draft.equipment_source}
-                  photoUrls={draft.equipment_photo_urls}
-                  onChange={({ equipment, source, photoUrls }) =>
-                    setDraft({
-                      ...draft,
-                      equipment,
-                      equipment_source: source,
-                      equipment_photo_urls: photoUrls,
-                    })
-                  }
+                  onChange={(equipment) => setDraft({ ...draft, equipment })}
                 />
               </div>
             </div>

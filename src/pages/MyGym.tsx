@@ -7,15 +7,13 @@ import PrimaryButton from '../components/PrimaryButton'
 import EquipmentCapture from '../components/EquipmentCapture'
 import { loadProfile, updateProfile } from '../lib/storage'
 import { useAuthUser } from '../hooks/useAuthUser'
-import type { Equipment, EquipmentSource, UserProfile } from '../lib/types'
+import type { Equipment, UserProfile } from '../lib/types'
 
 export default function MyGym() {
   const nav = useNavigate()
   const { loading: authLoading, user } = useAuthUser()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [equipment, setEquipment] = useState<Equipment[]>([])
-  const [source, setSource] = useState<EquipmentSource>('manual')
-  const [photoUrls, setPhotoUrls] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<number | null>(null)
 
@@ -26,17 +24,12 @@ export default function MyGym() {
       if (!p) { nav('/onboarding', { replace: true }); return }
       setProfile(p)
       setEquipment(p.equipment)
-      setSource(p.equipment_source)
-      setPhotoUrls(p.equipment_photo_urls ?? [])
     })
   }, [authLoading, user?.uid, nav])
 
   const dirty =
-    !!profile && (
-      JSON.stringify([...equipment].sort()) !== JSON.stringify([...profile.equipment].sort())
-      || source !== profile.equipment_source
-      || JSON.stringify(photoUrls) !== JSON.stringify(profile.equipment_photo_urls ?? [])
-    )
+    !!profile
+    && JSON.stringify([...equipment].sort()) !== JSON.stringify([...profile.equipment].sort())
 
   async function save() {
     if (!profile) return
@@ -44,8 +37,8 @@ export default function MyGym() {
     try {
       const merged = await updateProfile({
         equipment,
-        equipment_source: source,
-        equipment_photo_urls: photoUrls,
+        equipment_source: 'manual',
+        equipment_photo_urls: [],
       })
       setProfile(merged)
       setSavedAt(Date.now())
@@ -79,11 +72,7 @@ export default function MyGym() {
         <div className="mt-6">
           <EquipmentCapture
             value={equipment}
-            source={source}
-            photoUrls={photoUrls}
-            onChange={({ equipment: e, source: s, photoUrls: u }) => {
-              setEquipment(e); setSource(s); setPhotoUrls(u)
-            }}
+            onChange={(next) => setEquipment(next)}
           />
         </div>
 
