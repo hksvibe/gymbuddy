@@ -157,8 +157,8 @@ export default function Onboarding() {
 
           {step === 2 && (
             <StepChoice
-              title="What's your main goal?"
-              subtitle="Pick the one closest to why you joined the gym."
+              title="Why are you here?"
+              subtitle="Your goal decides everything downstream — rep ranges, exercise choice, protein targets."
               options={[
                 { v: 'fat_loss', label: 'Fat loss', sub: 'Look leaner, lose weight' },
                 { v: 'muscle_gain', label: 'Build muscle', sub: 'Get bigger, stronger' },
@@ -172,8 +172,8 @@ export default function Onboarding() {
 
           {step === 3 && (
             <StepChoice
-              title="How much gym experience do you have?"
-              subtitle="Be honest — beginners get a safer plan."
+              title="How much have you trained before?"
+              subtitle="Be honest — beginners get simpler, safer movements. Nothing here is graded."
               options={[
                 { v: 'never', label: "I've never trained" },
                 { v: 'under_1m', label: 'Under 1 month' },
@@ -189,7 +189,7 @@ export default function Onboarding() {
           {step === 4 && (
             <StepNumber
               title="How many days a week can you actually train?"
-              subtitle="Pick what's realistic, not what's ideal."
+              subtitle="Pick what's realistic, not what's ideal. Consistency beats intensity — every time."
               min={2} max={6}
               value={draft.days_per_week}
               onChange={(n) => setDraft({ ...draft, days_per_week: n })}
@@ -199,9 +199,9 @@ export default function Onboarding() {
           {step === 5 && (
             <StepChoice
               title="How long is each session?"
-              subtitle="We'll fit warm-up, 4+ main exercises, and a cool-down into this."
+              subtitle="Warm-up + 4+ exercises + cool-down all fit inside this. Short is fine — showing up is the point."
               options={[
-                { v: '25', label: '25 min', sub: 'Minimum for a real session' },
+                { v: '25', label: '25 min', sub: 'Short & focused — the minimum' },
                 { v: '30', label: '30 min', sub: 'Sweet spot for most beginners' },
                 { v: '45', label: '45 min', sub: "I've got the time" },
               ]}
@@ -216,7 +216,7 @@ export default function Onboarding() {
                 What&apos;s at your gym?
               </h2>
               <p className="mt-2 text-ink-soft text-sm">
-                Snap a photo of your gym, pick manually, or both.
+                Snap a photo or pick manually. We&apos;ll only prescribe exercises you can actually do.
               </p>
               <div className="mt-6">
                 <EquipmentCapture
@@ -238,8 +238,8 @@ export default function Onboarding() {
 
           {step === 7 && (
             <StepChoice
-              title="Your diet preference?"
-              subtitle="So we suggest meals you actually eat."
+              title="What do you eat?"
+              subtitle="Halfway there 🎯 — this decides which meals we suggest. Change it later anytime."
               options={[
                 { v: 'veg', label: 'Vegetarian' },
                 { v: 'egg_veg', label: 'Eggetarian' },
@@ -253,7 +253,7 @@ export default function Onboarding() {
           {step === 8 && (
             <StepMulti
               title="Any injuries?"
-              subtitle="So we keep painful movements out of your plan. Tap 'None' if you're good."
+              subtitle="So we keep painful movements out of your plan. Tap &apos;None&apos; if you&apos;re all good — that&apos;s a real answer, not a shortcut."
               options={[
                 { v: 'none', label: 'None' },
                 { v: 'lower_back', label: 'Lower back' },
@@ -271,7 +271,7 @@ export default function Onboarding() {
           {step === 9 && (
             <StepMulti
               title="Any medical conditions?"
-              subtitle="We adjust intensity for safety. This is mandatory."
+              subtitle="Big one. We dial intensity for safety and skip risky patterns. Mandatory, and worth reading twice."
               options={[
                 { v: 'none', label: 'None' },
                 { v: 'heart_condition', label: 'Heart condition' },
@@ -288,11 +288,14 @@ export default function Onboarding() {
 
           {step === 10 && (
             <div>
-              <h2 className="text-2xl font-bold text-ink leading-tight">
-                Anything else?
+              <p className="text-[10px] text-violet-deep font-bold uppercase tracking-wider">
+                Almost there ⚡
+              </p>
+              <h2 className="mt-1 text-2xl font-bold text-ink leading-tight">
+                Anything else we should know?
               </h2>
               <p className="mt-2 text-ink-soft text-sm">
-                Free-text. Example: &quot;no jumping — downstairs neighbour&quot;, &quot;evenings only&quot;.
+                Real life goes here — &quot;no jumping, downstairs neighbour&quot;, &quot;evenings only&quot;, &quot;ankle still healing&quot;. Or leave it blank if nothing comes to mind.
               </p>
               <textarea
                 value={draft.other_constraints}
@@ -361,8 +364,17 @@ function StepBasics({
 }: { draft: Draft, setDraft: (d: Draft) => void }) {
   return (
     <div>
+      <div className="mb-6 rounded-2xl bg-lavender border border-violet-deep/15 p-4">
+        <p className="text-[10px] text-violet-deep font-bold uppercase tracking-wider mb-1">
+          Heads up ✨
+        </p>
+        <p className="text-sm text-ink leading-snug">
+          The next ~12 questions might feel like a lot. Every answer sharpens your plan — safer, more personal, less generic. Under 90 seconds, promise.
+        </p>
+      </div>
+
       <h2 className="text-2xl font-bold text-ink leading-tight">First, the basics.</h2>
-      <p className="mt-2 text-ink-soft text-sm">We&apos;ll use this to talk to you, not to spam you.</p>
+      <p className="mt-2 text-ink-soft text-sm">A name to greet you by. That&apos;s it.</p>
 
       <div className="mt-8 space-y-4">
         <Field label="Your name">
@@ -405,8 +417,7 @@ function StepBody({
     <div>
       <h2 className="text-2xl font-bold text-ink leading-tight">Your body.</h2>
       <p className="mt-2 text-ink-soft text-sm">
-        We use this to set the right protein target and pick exercises that suit your build.
-        Rough numbers are fine.
+        Real numbers here mean a real protein target and exercises picked for your build. Guesses are fine — you can update this anytime.
       </p>
 
       <div className="mt-8 space-y-4">
