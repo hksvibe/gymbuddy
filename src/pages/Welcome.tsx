@@ -2,17 +2,14 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Dumbbell, Loader2 } from 'lucide-react'
 import MobileShell from '../components/MobileShell'
-import PrimaryButton from '../components/PrimaryButton'
 import { loadProfile } from '../lib/storage'
-import { seedDemo } from '../lib/seed'
-import { signInWithGoogle, signInAsGuest } from '../lib/auth'
+import { signInWithGoogle } from '../lib/auth'
 import { useAuthUser } from '../hooks/useAuthUser'
-import { firebaseConfigured } from '../lib/firebase'
 
 export default function Welcome() {
   const nav = useNavigate()
   const { user, loading } = useAuthUser()
-  const [busy, setBusy] = useState<null | 'google' | 'guest' | 'demo'>(null)
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // If we already have a signed-in user + a profile, jump straight to Today.
@@ -26,34 +23,13 @@ export default function Welcome() {
   }, [user, loading, nav])
 
   async function doGoogle() {
-    setBusy('google'); setError(null)
+    setBusy(true); setError(null)
     try {
       await signInWithGoogle()
     } catch (e) {
       const msg = String((e as { message?: string }).message ?? e)
       setError(msg.includes('popup') ? 'Sign-in cancelled.' : 'Google sign-in failed. Try again?')
-      setBusy(null)
-    }
-  }
-  async function doGuest() {
-    setBusy('guest'); setError(null)
-    try {
-      await signInAsGuest()
-      nav('/onboarding', { replace: true })
-    } catch {
-      setError('Something went wrong. Try again?')
-      setBusy(null)
-    }
-  }
-  async function doDemo() {
-    setBusy('demo'); setError(null)
-    try {
-      await signInAsGuest()
-      await seedDemo()
-      nav('/today', { replace: true })
-    } catch {
-      setError('Demo load failed.')
-      setBusy(null)
+      setBusy(false)
     }
   }
 
@@ -74,37 +50,12 @@ export default function Welcome() {
         </div>
 
         <div className="w-full space-y-3">
-          {firebaseConfigured ? (
-            <>
-              <GoogleButton onClick={doGoogle} loading={busy === 'google'} />
-              <button
-                onClick={doGuest}
-                disabled={busy !== null}
-                className="w-full text-center text-sm text-ink-soft font-medium py-2 disabled:opacity-50"
-              >
-                {busy === 'guest' ? 'Loading…' : 'Or try as guest'}
-              </button>
-            </>
-          ) : (
-            <PrimaryButton onClick={doGuest} loading={busy === 'guest'}>
-              Get started — it&apos;s free
-            </PrimaryButton>
-          )}
-
-          <button
-            onClick={doDemo}
-            disabled={busy !== null}
-            className="w-full text-center text-sm text-violet-deep font-medium underline underline-offset-4 disabled:opacity-50"
-          >
-            {busy === 'demo' ? 'Loading demo…' : 'See a demo with sample data'}
-          </button>
-
+          <GoogleButton onClick={doGoogle} loading={busy} />
           {error && (
             <p className="text-center text-xs text-red-600 mt-1">{error}</p>
           )}
-
           <p className="text-center text-xs text-gray-400 mt-2">
-            Google sign-in keeps your progress on any device. Guest mode is local only.
+            Sign in with Google to save your progress across devices.
           </p>
         </div>
       </div>
