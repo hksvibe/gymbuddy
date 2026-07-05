@@ -5,13 +5,13 @@ import { httpsCallable } from 'firebase/functions'
 import { firebaseConfigured, fns } from './firebase'
 import {
   allowedIntensities, estimateMinutes, padToMinimum, pickCooldown, pickExercises,
-  pickWarmup, trimToFit,
+  pickWarmup, trimToFit, type Pattern,
 } from '../data/exercises'
 import { mealsFor, proteinTargetFor } from '../data/meals'
 import { canonicalize } from '../data/equipment'
 import type {
   Equipment, Goal, Experience, DietPref, Injury, MedicalCondition, SessionLength,
-  LastWeekSummary, PlanJSON, UserProfile, Exercise,
+  LastWeekSummary, PlanJSON, UserProfile, Exercise, ExerciseIntensity,
 } from './types'
 
 export interface GeneratePlanInput {
@@ -27,6 +27,7 @@ export interface GeneratePlanInput {
   injuries: Injury[]
   medical_conditions: MedicalCondition[]
   other_constraints: string
+  includes_yoga: boolean
   week_number: number
   last_week?: LastWeekSummary
 }
@@ -47,6 +48,7 @@ export function profileToInput(
     injuries: p.injuries,
     medical_conditions: p.medical_conditions,
     other_constraints: p.other_constraints,
+    includes_yoga: p.includes_yoga ?? false,
     week_number,
     last_week,
   }
@@ -149,7 +151,6 @@ function filterUnavailableEquipment(plan: PlanJSON, available: Equipment[]): Pla
 }
 
 // ---------------------- Mock planner ----------------------
-type Pattern = 'squat' | 'hinge' | 'push' | 'pull' | 'overhead' | 'core' | 'cardio' | 'lunge'
 
 const FULL_BODY_TEMPLATES: Pattern[][] = [
   ['squat', 'push', 'pull', 'core'],
@@ -164,12 +165,16 @@ const PPL_TEMPLATES: Pattern[][] = [
   ['squat', 'hinge', 'lunge', 'core'],
 ]
 
+// A yoga day picks 4-6 different yoga poses. All light, all bodyweight.
+const YOGA_TEMPLATE: Pattern[] = ['yoga', 'yoga', 'yoga', 'yoga', 'yoga', 'yoga']
+
 // Human-friendly labels for each day. Chosen from the day template's patterns,
 // so a squat/push/pull day never gets called "Upper Body".
 const FOCUS_LABELS: Record<Pattern, string> = {
   squat: 'legs + core', hinge: 'posterior chain', push: 'chest + shoulders',
   pull: 'back + biceps', overhead: 'shoulders', core: 'core', cardio: 'cardio',
   lunge: 'single-leg + core',
+  yoga: 'flexibility + balance',
 }
 
 // A day-name derived from the actual training patterns. Prevents "Upper Body"
@@ -212,23 +217,34 @@ export function mockGeneratePlan(input: GeneratePlanInput): PlanJSON {
   // only inside padToMinimum, and only when we truly can't fill the day.
   const usedThisWeek = new Set<string>()
 
+  // If the user opted into yoga, dedicate the LAST training day of the week
+  // to a yoga session — it doubles as active recovery.
+  const yogaDayIdx = input.includes_yoga && dayCount >= 2 ? dayCount - 1 : -1
+
   for (let i = 0; i < dayCount; i++) {
-    const tpl = tpls[i % tpls.length]
+    const isYogaDay = i === yogaDayIdx
+    const tpl = isYogaDay ? YOGA_TEMPLATE : tpls[i % tpls.length]
+    // Yoga allows LIGHT regardless of user experience — heavy compounds don't
+    // belong in a yoga session, even for advanced trainees.
+    const dayAllowed: ExerciseIntensity[] = isYogaDay ? ['light'] : allowed
     let mainExercises = pickExercises(
-      tpl, input.equipment, input.injuries, input.medical_conditions, allowed, noJumping, usedThisWeek,
+      tpl, input.equipment, input.injuries, input.medical_conditions, dayAllowed, noJumping, usedThisWeek,
     )
 
     if (mainExercises.length === 0) {
       mainExercises = pickExercises(
-        tpl, ['bodyweight'], input.injuries, input.medical_conditions, allowed, noJumping, usedThisWeek,
+        tpl, ['bodyweight'], input.injuries, input.medical_conditions, dayAllowed, noJumping, usedThisWeek,
       )
     }
 
     // Enforce the 4-exercise floor for the main phase, drawing from unused patterns.
-    const fillerPatterns: Pattern[] = ['core', 'lunge', 'pull', 'squat', 'hinge', 'push']
+    // Yoga days pad only with more yoga; strength days use the regular filler list.
+    const fillerPatterns: Pattern[] = isYogaDay
+      ? ['yoga']
+      : ['core', 'lunge', 'pull', 'squat', 'hinge', 'push']
     mainExercises = padToMinimum(
       mainExercises, fillerPatterns, input.equipment, input.injuries,
-      input.medical_conditions, allowed, MIN_MAIN_EXERCISES, noJumping, usedThisWeek,
+      input.medical_conditions, dayAllowed, MIN_MAIN_EXERCISES, noJumping, usedThisWeek,
     )
 
     if (input.last_week?.exercises_skipped?.length) {
@@ -269,10 +285,14 @@ export function mockGeneratePlan(input: GeneratePlanInput): PlanJSON {
 
     // Focus + label derived from THIS day's actual patterns — squats never
     // land on a day labelled "Upper Body".
-    const focus = tpl.slice(0, 2).map((t) => FOCUS_LABELS[t]).join(' + ')
-    const label = useSplit === 'ppl'
-      ? `Day ${i + 1} - ${['Push', 'Pull', 'Legs'][i % 3]}`
-      : `Day ${i + 1} - ${dayNameFor(tpl)} ${String.fromCharCode(65 + (i % 3))}`
+    const focus = isYogaDay
+      ? 'flexibility + balance + recovery'
+      : tpl.slice(0, 2).map((t) => FOCUS_LABELS[t]).join(' + ')
+    const label = isYogaDay
+      ? `Day ${i + 1} - Yoga`
+      : useSplit === 'ppl'
+        ? `Day ${i + 1} - ${['Push', 'Pull', 'Legs'][i % 3]}`
+        : `Day ${i + 1} - ${dayNameFor(tpl)} ${String.fromCharCode(65 + (i % 3))}`
 
     days.push({
       day_label: label,

@@ -27,6 +27,7 @@ interface Draft {
   experience?: Experience
   days_per_week?: number
   session_length?: SessionLength
+  includes_yoga?: boolean
   // Step 3 — Around you
   equipment: Equipment[]
   diet_pref?: DietPref
@@ -83,6 +84,7 @@ export default function Onboarding() {
         injuries: draft.injuries.length ? draft.injuries : ['none'],
         medical_conditions: draft.medical_conditions.length ? draft.medical_conditions : ['none'],
         other_constraints: draft.other_constraints.trim(),
+        includes_yoga: draft.includes_yoga ?? false,
         current_week: 1,
       }
       const saved = await saveProfile(profile)
@@ -182,6 +184,7 @@ function canContinue(step: number, d: Draft, chronicRequired: boolean): boolean 
   }
   if (step === 1) {
     return !!d.goal && !!d.experience && !!d.days_per_week && !!d.session_length
+      && typeof d.includes_yoga === 'boolean'
   }
   if (step === 2) {
     return d.equipment.length > 0 && !!d.diet_pref
@@ -311,6 +314,19 @@ function StepTraining({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft) 
         value={draft.session_length}
         onChange={(v) => setDraft({ ...draft, session_length: v })}
       />
+
+      <SubLabel>Include yoga in your week?</SubLabel>
+      <ChoiceGrid<'yes' | 'no'>
+        options={[
+          { v: 'yes', label: 'Yes — one yoga day' },
+          { v: 'no', label: 'No thanks' },
+        ]}
+        value={draft.includes_yoga === true ? 'yes' : draft.includes_yoga === false ? 'no' : undefined}
+        onChange={(v) => setDraft({ ...draft, includes_yoga: v === 'yes' })}
+      />
+      <p className="mt-1.5 text-[10px] text-ink-soft italic">
+        Yoga day = light flexibility + balance session. Great as active recovery.
+      </p>
     </div>
   )
 }

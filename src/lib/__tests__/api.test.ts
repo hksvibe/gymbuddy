@@ -15,6 +15,7 @@ const baseProfile: GeneratePlanInput = {
   injuries: ['none'],
   medical_conditions: ['none'],
   other_constraints: '',
+  includes_yoga: false,
   week_number: 1,
 }
 
@@ -94,6 +95,34 @@ describe('mockGeneratePlan — diet uses weight-scaled protein', () => {
   it('rounds protein target to the nearest 5g', () => {
     const p = mockGeneratePlan({ ...baseProfile, weight_kg: 67 })
     expect(p.diet.daily_protein_target_g % 5).toBe(0)
+  })
+})
+
+describe('mockGeneratePlan — yoga opt-in', () => {
+  it('dedicates the last day to yoga when includes_yoga is true', () => {
+    const p = mockGeneratePlan({ ...baseProfile, days_per_week: 3, includes_yoga: true })
+    const last = p.days[p.days.length - 1]
+    expect(last.day_label).toMatch(/yoga/i)
+    for (const ex of last.exercises.filter((e) => e.phase === 'main')) {
+      expect(ex.intensity).toBe('light')
+    }
+  })
+
+  it('does NOT add a yoga day when includes_yoga is false', () => {
+    const p = mockGeneratePlan({ ...baseProfile, days_per_week: 3, includes_yoga: false })
+    for (const d of p.days) {
+      expect(d.day_label).not.toMatch(/yoga/i)
+    }
+  })
+
+  it('yoga day exercises are all bodyweight and light', () => {
+    const p = mockGeneratePlan({ ...baseProfile, days_per_week: 4, includes_yoga: true })
+    const yogaDay = p.days.find((d) => /yoga/i.test(d.day_label))!
+    expect(yogaDay).toBeDefined()
+    for (const ex of yogaDay.exercises.filter((e) => e.phase === 'main')) {
+      expect(ex.intensity).toBe('light')
+      expect(ex.uses_equipment.every((eq) => eq === 'bodyweight')).toBe(true)
+    }
   })
 })
 

@@ -66,6 +66,10 @@ export async function loadProfile(): Promise<UserProfile | null> {
   if ((profile.session_length as number) < 25) {
     profile = { ...profile, session_length: 25 }
   }
+  // Legacy profiles predate the yoga opt-in — default to false.
+  if (typeof profile.includes_yoga !== 'boolean') {
+    profile = { ...profile, includes_yoga: false }
+  }
   return profile
 }
 

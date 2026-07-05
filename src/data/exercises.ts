@@ -6,7 +6,7 @@ import type {
   Injury, MedicalCondition,
 } from '../lib/types'
 
-type Pattern = 'squat' | 'hinge' | 'push' | 'pull' | 'overhead' | 'core' | 'cardio' | 'lunge'
+type Pattern = 'squat' | 'hinge' | 'push' | 'pull' | 'overhead' | 'core' | 'cardio' | 'lunge' | 'yoga'
 
 interface ExerciseEntry extends Omit<Exercise, 'video_id' | 'uses_equipment' | 'safe_for_user'> {
   pattern: Pattern
@@ -30,6 +30,8 @@ export function allowedIntensities(exp: Experience): ExerciseIntensity[] {
     default:         return ['light']
   }
 }
+
+export type { Pattern }
 
 // ------------------- Main-phase library -------------------
 export const EXERCISES: ExerciseEntry[] = [
@@ -259,6 +261,75 @@ export const EXERCISES: ExerciseEntry[] = [
     why: 'Bodyweight king with a twist. Advanced back and grip strength.',
     form_cue: 'Dead hang, drive elbows down, chin over bar, full range.',
     youtube_search_query: 'weighted pull up form beginner',
+  },
+
+  // ==================== YOGA (opt-in day) ====================
+  {
+    name: 'Sun Salutation (Surya Namaskar A)', phase: 'main', intensity: 'light', pattern: 'yoga',
+    uses_equipment: ['bodyweight'], avoid_injury: ['lower_back'],
+    avoid_medical: ['pregnancy'], approx_minutes: 6,
+    sets: 3, reps: '3 rounds', rpe: '5-6', rest_seconds: 30,
+    why: 'A full-body flow that warms every joint and moves in every direction.',
+    form_cue: 'Move with breath — inhale up, exhale fold. Never rush.',
+    youtube_search_query: 'surya namaskar a beginner yoga',
+  },
+  {
+    name: 'Warrior II (Virabhadrasana II)', phase: 'main', intensity: 'light', pattern: 'yoga',
+    uses_equipment: ['bodyweight'], avoid_injury: ['knee'], avoid_medical: [], approx_minutes: 4,
+    sets: 2, reps: '45 sec each side', rpe: '5', rest_seconds: 20, hold_seconds: 45,
+    why: 'Builds leg endurance, opens hips, teaches steady breath under tension.',
+    form_cue: 'Front knee over ankle, arms parallel to floor, gaze past front hand.',
+    youtube_search_query: 'warrior 2 pose beginner yoga',
+  },
+  {
+    name: 'Downward-Facing Dog', phase: 'main', intensity: 'light', pattern: 'yoga',
+    uses_equipment: ['bodyweight'], avoid_injury: ['wrist', 'shoulder'],
+    avoid_medical: ['high_bp'], approx_minutes: 3,
+    sets: 3, reps: '30 sec', rpe: '4-5', rest_seconds: 15, hold_seconds: 30,
+    why: 'Lengthens the whole posterior chain and calms the nervous system.',
+    form_cue: 'Push floor away, heels reach down, spine long, breathe.',
+    youtube_search_query: 'downward dog pose beginner yoga',
+  },
+  {
+    name: 'Bridge Pose (Setu Bandha)', phase: 'main', intensity: 'light', pattern: 'yoga',
+    uses_equipment: ['bodyweight'], avoid_injury: ['neck'], avoid_medical: [], approx_minutes: 3,
+    sets: 3, reps: '45 sec', rpe: '4-5', rest_seconds: 20, hold_seconds: 45,
+    why: 'Wakes up glutes, opens the front of the hips, back-friendly.',
+    form_cue: 'Feet hip-width, press through heels, lift hips, chin off chest.',
+    youtube_search_query: 'bridge pose beginner yoga',
+  },
+  {
+    name: 'Tree Pose (Vrikshasana)', phase: 'main', intensity: 'light', pattern: 'yoga',
+    uses_equipment: ['bodyweight'], avoid_injury: ['knee'], avoid_medical: [], approx_minutes: 3,
+    sets: 2, reps: '30 sec each side', rpe: '4', rest_seconds: 15, hold_seconds: 30,
+    why: 'Builds balance, focus, and ankle strength — grounds the whole session.',
+    form_cue: 'Foot on inner calf or thigh (not knee), hands at heart or overhead.',
+    youtube_search_query: 'tree pose beginner yoga',
+  },
+  {
+    name: 'Cat-Cow Flow', phase: 'main', intensity: 'light', pattern: 'yoga',
+    uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 3,
+    sets: 3, reps: '10 rounds', rpe: '3-4', rest_seconds: 10,
+    why: 'Mobilises the spine — the best 3 minutes for anyone who sits at a desk.',
+    form_cue: 'On hands and knees — inhale arch, exhale round. Slow and steady.',
+    youtube_search_query: 'cat cow pose beginner yoga',
+  },
+  {
+    name: 'Cobra Pose (Bhujangasana)', phase: 'main', intensity: 'light', pattern: 'yoga',
+    uses_equipment: ['bodyweight'], avoid_injury: ['lower_back', 'wrist'],
+    avoid_medical: ['pregnancy'], approx_minutes: 3,
+    sets: 3, reps: '20 sec', rpe: '4', rest_seconds: 15, hold_seconds: 20,
+    why: 'Gentle back extension after any seated work or forward folds.',
+    form_cue: 'Elbows soft, shoulders down, lift chest only as far as feels good.',
+    youtube_search_query: 'cobra pose beginner yoga',
+  },
+  {
+    name: 'Seated Forward Fold', phase: 'main', intensity: 'light', pattern: 'yoga',
+    uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 3,
+    sets: 2, reps: '45 sec', rpe: '3', rest_seconds: 15, hold_seconds: 45,
+    why: 'Slowly lengthens the whole back of the body. Calms the mind.',
+    form_cue: 'Legs long, hinge from hips (not spine), reach for shins/feet.',
+    youtube_search_query: 'seated forward fold beginner yoga',
   },
 ]
 

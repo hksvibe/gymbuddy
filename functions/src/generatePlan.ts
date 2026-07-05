@@ -26,6 +26,7 @@ You MUST respect ALL of these simultaneously:
 - SESSION LENGTH: MINIMUM 25 minutes per session. Fit warm-up + main + cool-down inside the requested session_length (25, 30, or 45 minutes).
 - OTHER CONSTRAINTS: honor free-text constraints (e.g. "no jumping", "evenings only").
 - DAYS/WEEK: produce exactly days_per_week training days with a simple beginner split.
+- YOGA: if includes_yoga is true, dedicate ONE day of the week to a light yoga session (Sun Salutation, Warrior II, Downward Dog, Bridge, Tree, Cat-Cow, Cobra, Seated Forward Fold and similar). That yoga day: phase="main" exercises are yoga poses tagged intensity="light", label the day "Day N - Yoga", focus "flexibility + balance + recovery". The remaining days keep the user's normal strength split. If includes_yoga is false, do NOT prescribe yoga poses.
 
 STRUCTURE FOR EVERY DAY (this is mandatory):
 - Start with a DYNAMIC warm-up: 3-4 short movements (marching, arm circles, hip circles, squat-to-reach, etc.) totalling ~4 minutes. Each has phase="warmup".
@@ -120,6 +121,7 @@ interface PlanInput {
   injuries: string[]
   medical_conditions: string[]
   other_constraints: string
+  includes_yoga: boolean
   week_number: number
   last_week?: {
     completion_pct: number

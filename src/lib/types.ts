@@ -46,6 +46,7 @@ export interface UserProfile {
   injuries: Injury[]
   medical_conditions: MedicalCondition[]
   other_constraints: string
+  includes_yoga: boolean       // opt-in — dedicates one day/week to yoga
   current_week: number
   created_at: string
 }

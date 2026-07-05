@@ -24,6 +24,7 @@ export async function seedDemo() {
     injuries: ['lower_back'],
     medical_conditions: ['high_bp'],
     other_constraints: 'evenings only, no jumping',
+    includes_yoga: false,
     current_week: 1,
   })
   const planJson = await generatePlan(profileToInput(profile, 1))
