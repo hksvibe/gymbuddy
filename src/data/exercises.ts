@@ -6,7 +6,7 @@ import type {
   Injury, MedicalCondition,
 } from '../lib/types'
 
-type Pattern = 'squat' | 'hinge' | 'push' | 'pull' | 'overhead' | 'core' | 'cardio' | 'lunge' | 'yoga'
+type Pattern = 'squat' | 'hinge' | 'push' | 'pull' | 'overhead' | 'core' | 'cardio' | 'lunge' | 'yoga' | 'mobility'
 
 interface ExerciseEntry extends Omit<Exercise, 'video_id' | 'uses_equipment' | 'safe_for_user'> {
   pattern: Pattern
@@ -330,6 +330,72 @@ export const EXERCISES: ExerciseEntry[] = [
     why: 'Slowly lengthens the whole back of the body. Calms the mind.',
     form_cue: 'Legs long, hinge from hips (not spine), reach for shins/feet.',
     youtube_search_query: 'seated forward fold beginner yoga',
+  },
+
+  // ==================== MOBILITY & STRETCHING ====================
+  {
+    name: '90/90 Hip Stretch', phase: 'main', intensity: 'light', pattern: 'mobility',
+    uses_equipment: ['bodyweight'], avoid_injury: ['knee'], avoid_medical: [], approx_minutes: 4,
+    sets: 2, reps: '45 sec each side', rpe: '3', rest_seconds: 15, hold_seconds: 45,
+    why: 'Opens tight hips from prolonged sitting — most people\'s biggest limitation.',
+    form_cue: 'Both knees at 90°, chest tall, gently lean forward over the front leg.',
+    youtube_search_query: '90 90 hip stretch beginner mobility',
+  },
+  {
+    name: 'Deep Squat Hold', phase: 'main', intensity: 'light', pattern: 'mobility',
+    uses_equipment: ['bodyweight'], avoid_injury: ['knee'], avoid_medical: [], approx_minutes: 3,
+    sets: 3, reps: '30 sec', rpe: '4', rest_seconds: 30, hold_seconds: 30,
+    why: 'Restores hip and ankle mobility while opening the groin.',
+    form_cue: 'Feet flat, chest tall, elbows push knees out, heels on floor.',
+    youtube_search_query: 'deep squat hold mobility beginner',
+  },
+  {
+    name: 'Thoracic Rotation (Open Books)', phase: 'main', intensity: 'light', pattern: 'mobility',
+    uses_equipment: ['bodyweight'], avoid_injury: ['shoulder'], avoid_medical: [], approx_minutes: 3,
+    sets: 2, reps: '8 each side', rpe: '3', rest_seconds: 15,
+    why: 'Unlocks the upper back — huge for posture and shoulder pressing.',
+    form_cue: 'Side-lying, knees bent, sweep top arm slowly to open the chest.',
+    youtube_search_query: 'thoracic rotation open books mobility',
+  },
+  {
+    name: 'Ankle CARs (Circles)', phase: 'main', intensity: 'light', pattern: 'mobility',
+    uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 3,
+    sets: 2, reps: '10 each direction, each foot', rpe: '2-3', rest_seconds: 15,
+    why: 'Ankle mobility protects your knees and improves squat depth.',
+    form_cue: 'Big, slow, controlled circles. Move only from the ankle joint.',
+    youtube_search_query: 'ankle cars mobility beginner',
+  },
+  {
+    name: 'Kneeling Hip Flexor Stretch', phase: 'main', intensity: 'light', pattern: 'mobility',
+    uses_equipment: ['bodyweight'], avoid_injury: ['knee'], avoid_medical: [], approx_minutes: 3,
+    sets: 2, reps: '45 sec each side', rpe: '3', rest_seconds: 15, hold_seconds: 45,
+    why: 'Undoes the damage of a full day of sitting.',
+    form_cue: 'Half-kneeling, tuck the pelvis, squeeze back-side glute, upright.',
+    youtube_search_query: 'kneeling hip flexor stretch beginner',
+  },
+  {
+    name: 'World\'s Greatest Stretch', phase: 'main', intensity: 'light', pattern: 'mobility',
+    uses_equipment: ['bodyweight'], avoid_injury: ['knee', 'wrist'], avoid_medical: [], approx_minutes: 4,
+    sets: 2, reps: '5 each side', rpe: '4', rest_seconds: 20,
+    why: 'Hits hips, hamstrings, ankles, and thoracic spine in one flow.',
+    form_cue: 'Lunge, hand on floor inside foot, rotate top arm to the ceiling.',
+    youtube_search_query: 'worlds greatest stretch mobility',
+  },
+  {
+    name: 'Wall Chest Opener', phase: 'main', intensity: 'light', pattern: 'mobility',
+    uses_equipment: ['bodyweight'], avoid_injury: ['shoulder'], avoid_medical: [], approx_minutes: 3,
+    sets: 2, reps: '30 sec each side', rpe: '3', rest_seconds: 15, hold_seconds: 30,
+    why: 'Opens tight pecs from too much sitting or pressing work.',
+    form_cue: 'Palm on wall, gently turn body away — mild stretch across chest.',
+    youtube_search_query: 'wall chest opener stretch mobility',
+  },
+  {
+    name: 'Cross-Body Glute Stretch', phase: 'main', intensity: 'light', pattern: 'mobility',
+    uses_equipment: ['bodyweight'], avoid_injury: ['knee'], avoid_medical: [], approx_minutes: 3,
+    sets: 2, reps: '45 sec each side', rpe: '3', rest_seconds: 15, hold_seconds: 45,
+    why: 'Releases the glute + piriformis — common cause of lower-back tightness.',
+    form_cue: 'Supine, ankle on opposite knee, gently pull the bottom thigh in.',
+    youtube_search_query: 'figure 4 glute stretch beginner',
   },
 ]
 

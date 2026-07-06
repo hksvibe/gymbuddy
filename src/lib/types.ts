@@ -46,9 +46,20 @@ export interface UserProfile {
   injuries: Injury[]
   medical_conditions: MedicalCondition[]
   other_constraints: string
-  includes_yoga: boolean       // opt-in — dedicates one day/week to yoga
+  training_styles: TrainingStyle[]     // at least one — defaults to ['strength_cardio']
+  includes_yoga?: boolean              // DEPRECATED: kept for backward-compat migration
   current_week: number
   created_at: string
+}
+
+// Which broad training modality a day belongs to. Users pick one or more
+// during onboarding; the planner allocates weekly days across the selection.
+export type TrainingStyle = 'strength_cardio' | 'yoga' | 'mobility'
+
+export const TRAINING_STYLE_LABELS: Record<TrainingStyle, string> = {
+  strength_cardio: 'Strength & Cardio',
+  yoga: 'Yoga',
+  mobility: 'Mobility & Stretching',
 }
 
 export type ExercisePhase = 'warmup' | 'main' | 'cooldown'

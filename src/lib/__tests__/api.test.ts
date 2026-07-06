@@ -16,6 +16,7 @@ const baseProfile: GeneratePlanInput = {
   medical_conditions: ['none'],
   other_constraints: '',
   includes_yoga: false,
+  training_styles: ['strength_cardio'],
   week_number: 1,
 }
 
@@ -98,28 +99,45 @@ describe('mockGeneratePlan — diet uses weight-scaled protein', () => {
   })
 })
 
-describe('mockGeneratePlan — yoga opt-in', () => {
-  it('dedicates the last day to yoga when includes_yoga is true', () => {
-    const p = mockGeneratePlan({ ...baseProfile, days_per_week: 3, includes_yoga: true })
-    const last = p.days[p.days.length - 1]
-    expect(last.day_label).toMatch(/yoga/i)
-    for (const ex of last.exercises.filter((e) => e.phase === 'main')) {
-      expect(ex.intensity).toBe('light')
-    }
+describe('mockGeneratePlan — training styles allocation', () => {
+  it('adds a yoga day when yoga is in training_styles', () => {
+    const p = mockGeneratePlan({ ...baseProfile, days_per_week: 3, training_styles: ['strength_cardio', 'yoga'] })
+    expect(p.days.some((d) => /yoga/i.test(d.day_label))).toBe(true)
   })
 
-  it('does NOT add a yoga day when includes_yoga is false', () => {
-    const p = mockGeneratePlan({ ...baseProfile, days_per_week: 3, includes_yoga: false })
+  it('adds a mobility day when mobility is in training_styles', () => {
+    const p = mockGeneratePlan({ ...baseProfile, days_per_week: 4, training_styles: ['strength_cardio', 'mobility'] })
+    expect(p.days.some((d) => /mobility/i.test(d.day_label))).toBe(true)
+  })
+
+  it('adds both yoga and mobility days when both are selected', () => {
+    const p = mockGeneratePlan({ ...baseProfile, days_per_week: 4, training_styles: ['strength_cardio', 'yoga', 'mobility'] })
+    expect(p.days.some((d) => /yoga/i.test(d.day_label))).toBe(true)
+    expect(p.days.some((d) => /mobility/i.test(d.day_label))).toBe(true)
+  })
+
+  it('does NOT add yoga/mobility days when only strength_cardio is picked', () => {
+    const p = mockGeneratePlan({ ...baseProfile, days_per_week: 3, training_styles: ['strength_cardio'] })
     for (const d of p.days) {
-      expect(d.day_label).not.toMatch(/yoga/i)
+      expect(d.day_label).not.toMatch(/yoga|mobility/i)
     }
   })
 
   it('yoga day exercises are all bodyweight and light', () => {
-    const p = mockGeneratePlan({ ...baseProfile, days_per_week: 4, includes_yoga: true })
+    const p = mockGeneratePlan({ ...baseProfile, days_per_week: 4, training_styles: ['strength_cardio', 'yoga'] })
     const yogaDay = p.days.find((d) => /yoga/i.test(d.day_label))!
     expect(yogaDay).toBeDefined()
     for (const ex of yogaDay.exercises.filter((e) => e.phase === 'main')) {
+      expect(ex.intensity).toBe('light')
+      expect(ex.uses_equipment.every((eq) => eq === 'bodyweight')).toBe(true)
+    }
+  })
+
+  it('mobility day exercises are all bodyweight and light', () => {
+    const p = mockGeneratePlan({ ...baseProfile, days_per_week: 4, training_styles: ['strength_cardio', 'mobility'] })
+    const mobDay = p.days.find((d) => /mobility/i.test(d.day_label))!
+    expect(mobDay).toBeDefined()
+    for (const ex of mobDay.exercises.filter((e) => e.phase === 'main')) {
       expect(ex.intensity).toBe('light')
       expect(ex.uses_equipment.every((eq) => eq === 'bodyweight')).toBe(true)
     }

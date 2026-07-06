@@ -12,8 +12,9 @@ import {
 } from '../lib/consent'
 import type {
   DietPref, Equipment, Experience, Goal, MedicalCondition,
-  Injury, SessionLength, UserProfile,
+  Injury, SessionLength, TrainingStyle, UserProfile,
 } from '../lib/types'
+import { TRAINING_STYLE_LABELS } from '../lib/types'
 
 interface Draft {
   // Step 1 — About you
@@ -27,7 +28,7 @@ interface Draft {
   experience?: Experience
   days_per_week?: number
   session_length?: SessionLength
-  includes_yoga?: boolean
+  training_styles: TrainingStyle[]
   // Step 3 — Around you
   equipment: Equipment[]
   diet_pref?: DietPref
@@ -46,6 +47,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0)
   const [draft, setDraft] = useState<Draft>({
     name: '', age: '', city: '', height_cm: '', weight_kg: '',
+    training_styles: ['strength_cardio'],
     equipment: [],
     injuries: [], medical_conditions: [],
     other_constraints: '',
@@ -84,7 +86,9 @@ export default function Onboarding() {
         injuries: draft.injuries.length ? draft.injuries : ['none'],
         medical_conditions: draft.medical_conditions.length ? draft.medical_conditions : ['none'],
         other_constraints: draft.other_constraints.trim(),
-        includes_yoga: draft.includes_yoga ?? false,
+        training_styles: draft.training_styles.length > 0
+          ? draft.training_styles
+          : ['strength_cardio'],
         current_week: 1,
       }
       const saved = await saveProfile(profile)
@@ -184,7 +188,7 @@ function canContinue(step: number, d: Draft, chronicRequired: boolean): boolean 
   }
   if (step === 1) {
     return !!d.goal && !!d.experience && !!d.days_per_week && !!d.session_length
-      && typeof d.includes_yoga === 'boolean'
+      && d.training_styles.length > 0
   }
   if (step === 2) {
     return d.equipment.length > 0 && !!d.diet_pref
@@ -315,17 +319,32 @@ function StepTraining({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft) 
         onChange={(v) => setDraft({ ...draft, session_length: v })}
       />
 
-      <SubLabel>Include yoga in your week?</SubLabel>
-      <ChoiceGrid<'yes' | 'no'>
-        options={[
-          { v: 'yes', label: 'Yes — one yoga day' },
-          { v: 'no', label: 'No thanks' },
-        ]}
-        value={draft.includes_yoga === true ? 'yes' : draft.includes_yoga === false ? 'no' : undefined}
-        onChange={(v) => setDraft({ ...draft, includes_yoga: v === 'yes' })}
-      />
-      <p className="mt-1.5 text-[10px] text-ink-soft italic">
-        Yoga day = light flexibility + balance session. Great as active recovery.
+      <SubLabel>Training styles you want in your week</SubLabel>
+      <div className="flex flex-wrap gap-2">
+        {(Object.keys(TRAINING_STYLE_LABELS) as TrainingStyle[]).map((s) => {
+          const active = draft.training_styles.includes(s)
+          return (
+            <button
+              key={s}
+              onClick={() => setDraft({
+                ...draft,
+                training_styles: active
+                  ? draft.training_styles.filter((x) => x !== s)
+                  : [...draft.training_styles, s],
+              })}
+              className={`rounded-full px-4 py-2 text-sm font-medium border-2 transition ${
+                active
+                  ? 'border-violet-deep bg-violet-deep text-white'
+                  : 'border-gray-200 bg-white text-ink hover:border-gray-300'
+              }`}
+            >
+              {TRAINING_STYLE_LABELS[s]}
+            </button>
+          )
+        })}
+      </div>
+      <p className="mt-2 text-[10px] text-ink-soft italic">
+        Pick one or more. Your week is split across them — Strength &amp; Cardio stays your backbone; Yoga and Mobility add active-recovery days.
       </p>
     </div>
   )

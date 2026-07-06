@@ -11,7 +11,7 @@ import { mealsFor, proteinTargetFor } from '../data/meals'
 import { canonicalize } from '../data/equipment'
 import type {
   Equipment, Goal, Experience, DietPref, Injury, MedicalCondition, SessionLength,
-  LastWeekSummary, PlanJSON, UserProfile, Exercise, ExerciseIntensity,
+  LastWeekSummary, PlanJSON, UserProfile, Exercise, ExerciseIntensity, TrainingStyle,
 } from './types'
 
 export interface GeneratePlanInput {
@@ -27,7 +27,8 @@ export interface GeneratePlanInput {
   injuries: Injury[]
   medical_conditions: MedicalCondition[]
   other_constraints: string
-  includes_yoga: boolean
+  includes_yoga: boolean                  // legacy — derived from training_styles
+  training_styles: TrainingStyle[]
   week_number: number
   last_week?: LastWeekSummary
 }
@@ -48,7 +49,10 @@ export function profileToInput(
     injuries: p.injuries,
     medical_conditions: p.medical_conditions,
     other_constraints: p.other_constraints,
-    includes_yoga: p.includes_yoga ?? false,
+    includes_yoga: (p.training_styles ?? ['strength_cardio']).includes('yoga'),
+    training_styles: p.training_styles && p.training_styles.length > 0
+      ? p.training_styles
+      : ['strength_cardio'],
     week_number,
     last_week,
   }
@@ -167,6 +171,31 @@ const PPL_TEMPLATES: Pattern[][] = [
 
 // A yoga day picks 4-6 different yoga poses. All light, all bodyweight.
 const YOGA_TEMPLATE: Pattern[] = ['yoga', 'yoga', 'yoga', 'yoga', 'yoga', 'yoga']
+const MOBILITY_TEMPLATE: Pattern[] = ['mobility', 'mobility', 'mobility', 'mobility', 'mobility', 'mobility']
+
+// Deal out the week's days across the selected training styles.
+// If a user picks Strength+Cardio + Yoga with 4 days/week, they get 3 strength
+// days + 1 yoga day. Weighting prefers the first style, then rotates the rest.
+function allocateStylePerDay(styles: TrainingStyle[], dayCount: number): TrainingStyle[] {
+  const cleaned: TrainingStyle[] = styles.length > 0 ? styles : ['strength_cardio']
+  // Ensure strength_cardio takes precedence unless the user has explicitly
+  // excluded it — the workout is the backbone; yoga/mobility supplement it.
+  const primary: TrainingStyle = cleaned.includes('strength_cardio')
+    ? 'strength_cardio'
+    : cleaned[0]
+  const others = cleaned.filter((s) => s !== primary)
+  const out: TrainingStyle[] = []
+  // Primary style fills all days first; then swap trailing days for each
+  // other style (one day each).
+  for (let i = 0; i < dayCount; i++) out.push(primary)
+  let swapIdx = dayCount - 1
+  for (const style of others) {
+    if (swapIdx < 0) break
+    out[swapIdx] = style
+    swapIdx--
+  }
+  return out
+}
 
 // Human-friendly labels for each day. Chosen from the day template's patterns,
 // so a squat/push/pull day never gets called "Upper Body".
@@ -175,6 +204,7 @@ const FOCUS_LABELS: Record<Pattern, string> = {
   pull: 'back + biceps', overhead: 'shoulders', core: 'core', cardio: 'cardio',
   lunge: 'single-leg + core',
   yoga: 'flexibility + balance',
+  mobility: 'joint mobility',
 }
 
 // A day-name derived from the actual training patterns. Prevents "Upper Body"
@@ -217,16 +247,18 @@ export function mockGeneratePlan(input: GeneratePlanInput): PlanJSON {
   // only inside padToMinimum, and only when we truly can't fill the day.
   const usedThisWeek = new Set<string>()
 
-  // If the user opted into yoga, dedicate the LAST training day of the week
-  // to a yoga session — it doubles as active recovery.
-  const yogaDayIdx = input.includes_yoga && dayCount >= 2 ? dayCount - 1 : -1
+  // Assign a training style to each day based on the user's selection.
+  const styleForDay = allocateStylePerDay(input.training_styles, dayCount)
 
   for (let i = 0; i < dayCount; i++) {
-    const isYogaDay = i === yogaDayIdx
-    const tpl = isYogaDay ? YOGA_TEMPLATE : tpls[i % tpls.length]
-    // Yoga allows LIGHT regardless of user experience — heavy compounds don't
-    // belong in a yoga session, even for advanced trainees.
-    const dayAllowed: ExerciseIntensity[] = isYogaDay ? ['light'] : allowed
+    const style = styleForDay[i]
+    const isYogaDay = style === 'yoga'
+    const isMobilityDay = style === 'mobility'
+    // Yoga + mobility days are always LIGHT and use their own templates.
+    const tpl = isYogaDay ? YOGA_TEMPLATE
+      : isMobilityDay ? MOBILITY_TEMPLATE
+      : tpls[i % tpls.length]
+    const dayAllowed: ExerciseIntensity[] = (isYogaDay || isMobilityDay) ? ['light'] : allowed
     let mainExercises = pickExercises(
       tpl, input.equipment, input.injuries, input.medical_conditions, dayAllowed, noJumping, usedThisWeek,
     )
@@ -237,10 +269,10 @@ export function mockGeneratePlan(input: GeneratePlanInput): PlanJSON {
       )
     }
 
-    // Enforce the 4-exercise floor for the main phase, drawing from unused patterns.
-    // Yoga days pad only with more yoga; strength days use the regular filler list.
-    const fillerPatterns: Pattern[] = isYogaDay
-      ? ['yoga']
+    // Enforce the 4-exercise floor for the main phase. Yoga / mobility days
+    // pad only from their own pattern; strength days use the regular filler list.
+    const fillerPatterns: Pattern[] = isYogaDay ? ['yoga']
+      : isMobilityDay ? ['mobility']
       : ['core', 'lunge', 'pull', 'squat', 'hinge', 'push']
     mainExercises = padToMinimum(
       mainExercises, fillerPatterns, input.equipment, input.injuries,
@@ -283,13 +315,17 @@ export function mockGeneratePlan(input: GeneratePlanInput): PlanJSON {
 
     const dayExercises = [...warmup, ...mainExercises, ...cooldown]
 
-    // Focus + label derived from THIS day's actual patterns — squats never
-    // land on a day labelled "Upper Body".
+    // Focus + label derived from THIS day's style — squats never land on a
+    // day labelled "Upper Body", yoga days always say "Yoga", etc.
     const focus = isYogaDay
       ? 'flexibility + balance + recovery'
+      : isMobilityDay
+      ? 'joint mobility + stretching'
       : tpl.slice(0, 2).map((t) => FOCUS_LABELS[t]).join(' + ')
     const label = isYogaDay
       ? `Day ${i + 1} - Yoga`
+      : isMobilityDay
+      ? `Day ${i + 1} - Mobility`
       : useSplit === 'ppl'
         ? `Day ${i + 1} - ${['Push', 'Pull', 'Legs'][i % 3]}`
         : `Day ${i + 1} - ${dayNameFor(tpl)} ${String.fromCharCode(65 + (i % 3))}`

@@ -70,6 +70,12 @@ export async function loadProfile(): Promise<UserProfile | null> {
   if (typeof profile.includes_yoga !== 'boolean') {
     profile = { ...profile, includes_yoga: false }
   }
+  // Migrate the old includes_yoga boolean → new training_styles multi-select.
+  if (!Array.isArray(profile.training_styles) || profile.training_styles.length === 0) {
+    const styles: import('./types').TrainingStyle[] = ['strength_cardio']
+    if (profile.includes_yoga) styles.push('yoga')
+    profile = { ...profile, training_styles: styles }
+  }
   return profile
 }
 
