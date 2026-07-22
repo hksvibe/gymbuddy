@@ -221,20 +221,20 @@ function RegenerateConfirm({
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col-reverse sm:flex-row gap-2">
-          <button
-            onClick={onCancel}
-            disabled={loading}
-            className="flex-1 rounded-2xl border border-gray-200 py-3 font-semibold text-ink hover:bg-gray-50 disabled:opacity-50"
-          >
-            Not now
-          </button>
+        <div className="mt-6 flex flex-col gap-2">
           <PrimaryButton onClick={onConfirm} loading={loading}>
             <span className="inline-flex items-center justify-center gap-2">
               <Check className="w-5 h-5" strokeWidth={3} />
               Yes, regenerate
             </span>
           </PrimaryButton>
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="w-full rounded-2xl border border-gray-200 py-3 font-semibold text-ink hover:bg-gray-50 disabled:opacity-50"
+          >
+            Not now
+          </button>
         </div>
       </div>
     </div>
