@@ -21,7 +21,10 @@ function toAuthUser(u: User): AuthUser {
     email: u.email,
     displayName: u.displayName,
     photoURL: u.photoURL,
-    isAnonymous: u.isAnonymous,
+    // If a Firebase user has an email address they are NOT anonymous —
+    // this is the ground truth even if the isAnonymous flag hasn't
+    // updated after an anon → Google account link.
+    isAnonymous: u.isAnonymous && !u.email,
   }
 }
 
@@ -65,7 +68,17 @@ export function subscribeAuth(cb: (u: AuthUser | null) => void): () => void {
     }, 300)
     return () => clearInterval(iv)
   }
-  return onAuthStateChanged(auth, (u) => cb(u ? toAuthUser(u) : null))
+  return onAuthStateChanged(auth, (u) => {
+    // Whenever a real Firebase user appears with an email or displayName,
+    // clear any leftover local-guest flag — otherwise stale localStorage
+    // from a previous guest session can cause "Guest mode" to render even
+    // after a successful Google sign-in.
+    if (u && !u.isAnonymous && (u.email || u.displayName)) {
+      localStorage.removeItem(LOCAL_GUEST_MODE_KEY)
+      localStorage.removeItem(LOCAL_UID_KEY)
+    }
+    cb(u ? toAuthUser(u) : null)
+  })
 }
 
 // Explicit guest sign-in. Tries Firebase Anonymous first; falls back to a
@@ -171,6 +184,11 @@ export async function completeRedirectSignIn(): Promise<AuthUser | null> {
   if (!firebaseConfigured || !auth) return null
   try {
     const cred = await getRedirectResult(auth)
+    if (cred?.user && !cred.user.isAnonymous && (cred.user.email || cred.user.displayName)) {
+      // Successful Google redirect sign-in — clear any leftover guest flag.
+      localStorage.removeItem(LOCAL_GUEST_MODE_KEY)
+      localStorage.removeItem(LOCAL_UID_KEY)
+    }
     return cred?.user ? toAuthUser(cred.user) : null
   } catch (e) {
     console.warn('completeRedirectSignIn failed', e)

@@ -37,7 +37,9 @@ export default function IdentityStrip() {
     }
   }
 
-  const isGuest = user.isAnonymous
+  // Belt-and-braces: a user with an email is NEVER a guest, regardless of
+  // any stale isAnonymous flag Firebase may still be carrying around.
+  const isGuest = user.isAnonymous && !user.email && !user.displayName
   const initial = (user.displayName || user.email || 'G').trim().charAt(0).toUpperCase()
 
   return (
