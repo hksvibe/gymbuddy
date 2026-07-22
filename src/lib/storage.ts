@@ -43,7 +43,9 @@ export async function saveProfile(p: Omit<UserProfile, 'id' | 'created_at'>) {
   const uid = await ensureSignedIn()
   const profile: UserProfile = { ...p, id: uid, created_at: new Date().toISOString() }
   if (useFirestore()) {
-    await setDoc(doc(db!, 'users', uid), profile)
+    // Some optional profile fields (e.g. includes_yoga on legacy migrations)
+    // can be undefined — Firestore rejects those. Strip them defensively.
+    await setDoc(doc(db!, 'users', uid), stripUndefined(profile))
   } else {
     localStorage.setItem(`gymbuddy.profile.${uid}`, JSON.stringify(profile))
   }
@@ -171,10 +173,12 @@ function mutateVideoId(plan: Plan, exerciseName: string, video_id: string) {
 export async function saveCheckin(c: Omit<Checkin, 'id' | 'user_id' | 'checked_in_at'>): Promise<Checkin> {
   const uid = await ensureSignedIn()
   const checkin: Checkin = { ...c, id: rid(), user_id: uid, checked_in_at: new Date().toISOString() }
+  // felt / note are optional — Firestore rejects undefined values.
+  const payload = stripUndefined(checkin)
   if (useFirestore()) {
-    const ref = await addDoc(collection(db!, 'users', uid, 'checkins'), checkin)
+    const ref = await addDoc(collection(db!, 'users', uid, 'checkins'), payload)
     checkin.id = ref.id
-    await setDoc(ref, checkin)
+    await setDoc(ref, { ...payload, id: ref.id })
   } else {
     const all = listLocal<Checkin>(`gymbuddy.checkins.${uid}`)
     all.push(checkin)

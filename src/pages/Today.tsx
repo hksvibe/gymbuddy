@@ -30,6 +30,7 @@ export default function Today() {
   const [felt, setFelt] = useState<Felt | undefined>(undefined)
   const [saving, setSaving] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
+  const [checkInError, setCheckInError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshFailed, setRefreshFailed] = useState(false)
@@ -102,6 +103,7 @@ export default function Today() {
   async function handleCheckIn() {
     if (!plan || !activeDay) return
     setSaving(true)
+    setCheckInError(null)
     try {
       const exercises_done: string[] = []
       const exercises_skipped: string[] = []
@@ -123,6 +125,9 @@ export default function Today() {
       setWeekCheckins((cs) => [...cs, saved])
       setJustSaved(true)
       setTimeout(() => setJustSaved(false), 2500)
+    } catch (e) {
+      console.error('check-in failed', e)
+      setCheckInError("Couldn't save your check-in. Try again?")
     } finally {
       setSaving(false)
     }
@@ -203,6 +208,11 @@ export default function Today() {
           {justSaved && (
             <p className="mt-3 text-center text-sm text-success-dark font-medium animate-pop-in">
               Nice work. See you next session.
+            </p>
+          )}
+          {checkInError && (
+            <p className="mt-3 text-center text-sm text-red-600 font-medium">
+              {checkInError}
             </p>
           )}
           {!alreadyCheckedIn && (
