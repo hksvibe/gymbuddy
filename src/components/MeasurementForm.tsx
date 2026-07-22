@@ -31,6 +31,7 @@ export default function MeasurementForm({ open, onClose, onSaved, seedFromLatest
   const [draft, setDraft] = useState<Draft>(empty)
   const [saving, setSaving] = useState(false)
   const [showMore, setShowMore] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   if (!open) return null
 
@@ -41,6 +42,7 @@ export default function MeasurementForm({ open, onClose, onSaved, seedFromLatest
 
   async function submit() {
     setSaving(true)
+    setError(null)
     try {
       const saved = await saveMeasurement({
         weight_kg: num(draft.weight_kg),
@@ -56,6 +58,10 @@ export default function MeasurementForm({ open, onClose, onSaved, seedFromLatest
       setDraft(empty)
       setShowMore(false)
       onClose()
+    } catch (e) {
+      console.error('saveMeasurement failed', e)
+      const msg = String((e as { message?: string }).message ?? e)
+      setError(msg.length > 100 ? "Couldn't save. Try again?" : msg || "Couldn't save. Try again?")
     } finally {
       setSaving(false)
     }
@@ -143,7 +149,10 @@ export default function MeasurementForm({ open, onClose, onSaved, seedFromLatest
             <PrimaryButton onClick={submit} disabled={!anyValue} loading={saving}>
               {saving ? 'Saving…' : 'Save entry'}
             </PrimaryButton>
-            {!anyValue && (
+            {error && (
+              <p className="mt-2 text-center text-xs text-red-600">{error}</p>
+            )}
+            {!anyValue && !error && (
               <p className="text-center text-xs text-ink-soft mt-2">
                 Enter at least one value to save.
               </p>

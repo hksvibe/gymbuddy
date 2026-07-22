@@ -235,6 +235,16 @@ export async function listWeeklyReviews(): Promise<WeeklyReview[]> {
   return listLocal<WeeklyReview>(`gymbuddy.reviews.${uid}`)
 }
 
+// Firestore rejects documents that carry `undefined` values. Since a
+// measurement can legitimately skip any field, filter them out before writing.
+function stripUndefined<T extends object>(obj: T): T {
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== undefined) out[k] = v
+  }
+  return out as T
+}
+
 // -------- Measurements (daily body tracker) --------
 export async function saveMeasurement(m: Omit<Measurement, 'id' | 'user_id' | 'logged_at' | 'logged_date'>): Promise<Measurement> {
   const uid = await ensureSignedIn()
@@ -246,10 +256,11 @@ export async function saveMeasurement(m: Omit<Measurement, 'id' | 'user_id' | 'l
     logged_at: now.toISOString(),
     logged_date: now.toISOString().slice(0, 10),
   }
+  const payload = stripUndefined(measurement)
   if (useFirestore()) {
-    const ref = await addDoc(collection(db!, 'users', uid, 'measurements'), measurement)
+    const ref = await addDoc(collection(db!, 'users', uid, 'measurements'), payload)
     measurement.id = ref.id
-    await setDoc(ref, measurement)
+    await setDoc(ref, { ...payload, id: ref.id })
   } else {
     const all = listLocal<Measurement>(`gymbuddy.measurements.${uid}`)
     all.push(measurement)
