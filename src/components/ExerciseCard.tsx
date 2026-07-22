@@ -1,5 +1,6 @@
 import { Play, Check, X, Timer, AlertCircle } from 'lucide-react'
 import type { Exercise, ExerciseIntensity } from '../lib/types'
+import { MUSCLE_LABELS } from '../lib/types'
 import { emojiFor } from '../data/equipment'
 
 interface Props {
@@ -57,6 +58,16 @@ export default function ExerciseCard({
               {exercise.uses_equipment.map((eq) => (
                 <span key={eq} className="bg-lavender text-violet-deep rounded-full px-2 py-0.5">
                   {emojiFor(eq)} {eq.replace(/_/g, ' ')}
+                </span>
+              ))}
+            </div>
+          )}
+          {exercise.muscles_worked && exercise.muscles_worked.length > 0 && (
+            <div className="mt-1.5 text-[10px] text-ink-soft flex flex-wrap gap-1">
+              <span className="font-semibold uppercase tracking-wider text-violet-deep mr-1">works</span>
+              {exercise.muscles_worked.slice(0, 4).map((m) => (
+                <span key={m} className="bg-white border border-violet-deep/20 text-violet-deep rounded-full px-2 py-0.5">
+                  {MUSCLE_LABELS[m] ?? m}
                 </span>
               ))}
             </div>

@@ -8,8 +8,11 @@ import Disclaimer from '../components/Disclaimer'
 import YouTubeEmbed from '../components/YouTubeEmbed'
 import FeltPrompt from '../components/FeltPrompt'
 import RestTimer from '../components/RestTimer'
+import FirstSessionNudge from '../components/FirstSessionNudge'
+import SundayRecapBanner from '../components/SundayRecapBanner'
+import { logEvent } from '../lib/analytics'
 import {
-  latestPlan, loadProfile, saveCheckin, checkinsForWeek, savePlan,
+  latestPlan, loadProfile, saveCheckin, checkinsForWeek, savePlan, listCheckins,
 } from '../lib/storage'
 import { generatePlan, isPlanStale, profileToInput } from '../lib/api'
 import { trimToFit } from '../data/exercises'
@@ -31,6 +34,7 @@ export default function Today() {
   const [saving, setSaving] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
   const [checkInError, setCheckInError] = useState<string | null>(null)
+  const [everCheckedIn, setEverCheckedIn] = useState(true)  // pessimistic — set false only after we've checked
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshFailed, setRefreshFailed] = useState(false)
@@ -47,6 +51,8 @@ export default function Today() {
       let pl = await latestPlan()
       if (!pl) { nav('/onboarding', { replace: true }); return }
       const ci = await checkinsForWeek(pl.week_number)
+      const allCi = await listCheckins()
+      setEverCheckedIn(allCi.length > 0)
 
       // Auto-regenerate plans generated before warm-up/cool-down + recipe requirements shipped.
       if (isPlanStale(pl.plan_json)) {
@@ -124,6 +130,12 @@ export default function Today() {
       })
       setWeekCheckins((cs) => [...cs, saved])
       setJustSaved(true)
+      // Analytics: first-check-in is a key leading indicator.
+      if (!everCheckedIn) {
+        logEvent('first_checkin', { week_number: plan.week_number })
+        setEverCheckedIn(true)
+      }
+      logEvent('checkin', { week_number: plan.week_number, felt: felt ?? 'unset' })
       setTimeout(() => setJustSaved(false), 2500)
     } catch (e) {
       console.error('check-in failed', e)
@@ -158,6 +170,9 @@ export default function Today() {
         </header>
 
         <Disclaimer />
+
+        <FirstSessionNudge show={!everCheckedIn && plan.week_number === 1} />
+        <SundayRecapBanner weekNumber={plan.week_number} hasCheckIns={weekCheckins.length > 0} />
 
         {refreshing && (
           <div className="mx-6 mt-3 rounded-2xl bg-violet-deep text-white px-4 py-3 flex items-center gap-3">

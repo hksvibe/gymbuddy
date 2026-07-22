@@ -70,6 +70,24 @@ export type ExercisePhase = 'warmup' | 'main' | 'cooldown'
 // - heavy : barbell compounds / weighted work, still beginner-safe form focus
 export type ExerciseIntensity = 'light' | 'medium' | 'heavy'
 
+// Muscle groups worked by an exercise — surfaced as chips on the card so
+// users can trust the AI's choices ("show muscle worked" per the deck).
+export type MuscleGroup =
+  | 'quads' | 'hamstrings' | 'glutes' | 'calves' | 'hip_flexors'
+  | 'chest' | 'back' | 'lats' | 'shoulders' | 'traps'
+  | 'biceps' | 'triceps' | 'forearms'
+  | 'core' | 'lower_back' | 'obliques'
+  | 'full_body' | 'cardio' | 'flexibility' | 'balance'
+
+export const MUSCLE_LABELS: Record<MuscleGroup, string> = {
+  quads: 'quads', hamstrings: 'hamstrings', glutes: 'glutes', calves: 'calves',
+  hip_flexors: 'hip flexors',
+  chest: 'chest', back: 'back', lats: 'lats', shoulders: 'shoulders', traps: 'traps',
+  biceps: 'biceps', triceps: 'triceps', forearms: 'forearms',
+  core: 'core', lower_back: 'lower back', obliques: 'obliques',
+  full_body: 'full body', cardio: 'cardio', flexibility: 'flexibility', balance: 'balance',
+}
+
 export interface Exercise {
   name: string
   phase: ExercisePhase
@@ -82,6 +100,7 @@ export interface Exercise {
   youtube_search_query: string
   video_id: string | null
   uses_equipment: Equipment[]
+  muscles_worked?: MuscleGroup[]
   safe_for_user: boolean
   rest_seconds?: number      // rest between sets — used by the timer modal
   hold_seconds?: number      // for stretches / planks — the "work" duration

@@ -5,17 +5,21 @@ import Today from './pages/Today'
 import WeeklyReview from './pages/WeeklyReview'
 import Progress from './pages/Progress'
 import MyGym from './pages/MyGym'
+import OfflineBanner from './components/OfflineBanner'
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Welcome />} />
-      <Route path="/onboarding" element={<Onboarding />} />
-      <Route path="/today" element={<Today />} />
-      <Route path="/week" element={<WeeklyReview />} />
-      <Route path="/progress" element={<Progress />} />
-      <Route path="/gym" element={<MyGym />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <OfflineBanner />
+      <Routes>
+        <Route path="/" element={<Welcome />} />
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/today" element={<Today />} />
+        <Route path="/week" element={<WeeklyReview />} />
+        <Route path="/progress" element={<Progress />} />
+        <Route path="/gym" element={<MyGym />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   )
 }

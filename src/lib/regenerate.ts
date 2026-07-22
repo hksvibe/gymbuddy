@@ -4,6 +4,7 @@
 
 import { generatePlan, profileToInput } from './api'
 import { checkinsForWeek, latestPlan, savePlan } from './storage'
+import { logEvent } from './analytics'
 import type { Plan, UserProfile } from './types'
 
 export interface RegenerateResult {
@@ -48,6 +49,12 @@ export async function regenerateWeekPreservingCompleted(
     equipment_snapshot: profile.equipment,
     plan_json: mergedPlanJson,
     source: 'adaptive',
+  })
+
+  logEvent('plan_regenerated', {
+    week_number: current.week_number,
+    preserved_days: preserved.length,
+    replaced_days: replaced.length,
   })
 
   return { newPlan: saved, preservedDayLabels: preserved, replacedDayLabels: replaced }

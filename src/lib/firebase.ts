@@ -26,6 +26,7 @@ if (firebaseConfigured) {
   _fns = getFunctions(app, 'asia-south1')
 }
 
+export const firebaseApp = app
 export const auth = _auth
 export const db = _db
 export const fns = _fns

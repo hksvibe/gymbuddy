@@ -6,6 +6,7 @@ import PrimaryButton from '../components/PrimaryButton'
 import EquipmentCapture from '../components/EquipmentCapture'
 import { saveProfile, savePlan } from '../lib/storage'
 import { generatePlan, profileToInput } from '../lib/api'
+import { logEvent } from '../lib/analytics'
 import {
   CONSENT_BULLETS, CONSENT_TITLES, CONSENT_VERSIONS,
   recordConsent, requiresChronicConsent,
@@ -57,6 +58,9 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null)
 
   const chronicRequired = requiresChronicConsent(draft.medical_conditions)
+
+  // Fire onboarding_started analytics event exactly once per session.
+  useState(() => { logEvent('onboarding_started'); return null })
 
   const next = () => setStep((s) => Math.min(TOTAL_STEPS - 1, s + 1))
   const back = () => setStep((s) => Math.max(0, s - 1))
@@ -113,6 +117,11 @@ export default function Onboarding() {
         equipment_snapshot: saved.equipment,
         plan_json: planJson,
         source: 'initial',
+      })
+      logEvent('onboarding_completed', {
+        goal: profile.goal,
+        experience: profile.experience,
+        days_per_week: profile.days_per_week,
       })
       nav('/today', { replace: true })
     } catch (e) {

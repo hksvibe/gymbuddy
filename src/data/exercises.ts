@@ -38,6 +38,7 @@ export const EXERCISES: ExerciseEntry[] = [
   // ==================== LIGHT (bodyweight + bands + isolation) ====================
   {
     name: 'Bodyweight Squat', phase: 'main', intensity: 'light', pattern: 'squat',
+    muscles_worked: ['quads', 'glutes', 'core'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 6,
     sets: 3, reps: '12-15', rpe: '6-7', rest_seconds: 45,
     why: 'Builds leg strength with zero equipment — perfect to learn the squat groove.',
@@ -46,6 +47,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Glute Bridge', phase: 'main', intensity: 'light', pattern: 'hinge',
+    muscles_worked: ['glutes', 'hamstrings', 'lower_back'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 5,
     sets: 3, reps: '12-15', rpe: '6', rest_seconds: 45,
     why: 'Wakes up your glutes — protects your lower back over time.',
@@ -54,6 +56,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Knee Push-up', phase: 'main', intensity: 'light', pattern: 'push',
+    muscles_worked: ['chest', 'triceps', 'shoulders', 'core'],
     uses_equipment: ['bodyweight'], avoid_injury: ['wrist'], avoid_medical: [], approx_minutes: 5,
     sets: 3, reps: '8-12', rpe: '6-7', rest_seconds: 45,
     why: 'Builds chest, shoulders, and core — scale your first real push-up.',
@@ -62,6 +65,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Reverse Lunge', phase: 'main', intensity: 'light', pattern: 'lunge',
+    muscles_worked: ['quads', 'glutes', 'balance'],
     uses_equipment: ['bodyweight'], avoid_injury: ['knee'], avoid_medical: [], approx_minutes: 6,
     sets: 2, reps: '10 each leg', rpe: '6-7', rest_seconds: 45,
     why: 'Single-leg strength without the knee strain of a forward lunge.',
@@ -70,6 +74,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Plank', phase: 'main', intensity: 'light', pattern: 'core',
+    muscles_worked: ['core', 'shoulders'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 4,
     sets: 3, reps: '20-30 sec', rpe: '6-7', rest_seconds: 30, hold_seconds: 30,
     why: 'Trains the whole midsection to stay tight under load.',
@@ -78,6 +83,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Dead Bug', phase: 'main', intensity: 'light', pattern: 'core',
+    muscles_worked: ['core', 'lower_back'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 4,
     sets: 3, reps: '8 each side', rpe: '6', rest_seconds: 30,
     why: 'Teaches your core to brace — back-saving exercise.',
@@ -86,6 +92,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Brisk Walk (Outdoor)', phase: 'main', intensity: 'light', pattern: 'cardio',
+    muscles_worked: ['cardio', 'calves'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 12,
     sets: 1, reps: '12 min', rpe: '5-6', rest_seconds: 0,
     why: 'Free cardio. Adds up — every walk counts.',
@@ -94,6 +101,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Treadmill Incline Walk', phase: 'main', intensity: 'light', pattern: 'cardio',
+    muscles_worked: ['cardio', 'glutes', 'calves'],
     uses_equipment: ['treadmill'], avoid_injury: [], avoid_medical: ['heart_condition'], approx_minutes: 10,
     sets: 1, reps: '10 min @ 5-8% incline', rpe: '5-6', rest_seconds: 0,
     why: 'Burns calories without beating up your joints. Easy to recover from.',
@@ -102,6 +110,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Resistance Band Row', phase: 'main', intensity: 'light', pattern: 'pull',
+    muscles_worked: ['back', 'lats', 'biceps'],
     uses_equipment: ['resistance_bands'], avoid_injury: [], avoid_medical: [], approx_minutes: 6,
     sets: 3, reps: '12-15', rpe: '6-7', rest_seconds: 45,
     why: 'Travel-friendly back work that won\'t aggravate joints.',
@@ -110,6 +119,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Dumbbell Lateral Raise', phase: 'main', intensity: 'light', pattern: 'overhead',
+    muscles_worked: ['shoulders'],
     uses_equipment: ['dumbbells'], avoid_injury: [], avoid_medical: [], approx_minutes: 5,
     sets: 3, reps: '12-15', rpe: '6', rest_seconds: 45,
     why: 'Builds shoulder width safely with light weight.',
@@ -120,6 +130,7 @@ export const EXERCISES: ExerciseEntry[] = [
   // ==================== MEDIUM (dumbbell / cable / machine compounds) ====================
   {
     name: 'Dumbbell Goblet Squat', phase: 'main', intensity: 'medium', pattern: 'squat',
+    muscles_worked: ['quads', 'glutes', 'core'],
     uses_equipment: ['dumbbells'], avoid_injury: [], avoid_medical: [], approx_minutes: 7,
     sets: 3, reps: '10-12', rpe: '6-7', rest_seconds: 60,
     why: 'Builds leg strength safely without loading your lower back.',
@@ -128,6 +139,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Leg Press Machine', phase: 'main', intensity: 'medium', pattern: 'squat',
+    muscles_worked: ['quads', 'glutes', 'hamstrings'],
     uses_equipment: ['leg_press', 'machines'], avoid_injury: [], avoid_medical: [], approx_minutes: 7,
     sets: 3, reps: '10-12', rpe: '6-7', rest_seconds: 60,
     why: 'Strong leg builder with back support — great for beginners.',
@@ -136,6 +148,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Dumbbell Romanian Deadlift', phase: 'main', intensity: 'medium', pattern: 'hinge',
+    muscles_worked: ['hamstrings', 'glutes', 'lower_back'],
     uses_equipment: ['dumbbells'], avoid_injury: ['lower_back'], avoid_medical: [], approx_minutes: 7,
     sets: 3, reps: '10-12', rpe: '6-7', rest_seconds: 60,
     why: 'Trains hamstrings and glutes — the unsung heroes of a strong body.',
@@ -144,6 +157,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Dumbbell Hip Thrust', phase: 'main', intensity: 'medium', pattern: 'hinge',
+    muscles_worked: ['glutes', 'hamstrings'],
     uses_equipment: ['dumbbells', 'bench'], avoid_injury: [], avoid_medical: [], approx_minutes: 7,
     sets: 3, reps: '10-12', rpe: '6-7', rest_seconds: 60,
     why: 'Glute focus without spinal load — back-friendly hinge.',
@@ -152,6 +166,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Dumbbell Bench Press', phase: 'main', intensity: 'medium', pattern: 'push',
+    muscles_worked: ['chest', 'triceps', 'shoulders'],
     uses_equipment: ['dumbbells', 'bench'], avoid_injury: [], avoid_medical: [], approx_minutes: 8,
     sets: 3, reps: '8-10', rpe: '6-7', rest_seconds: 60,
     why: 'Builds chest and triceps — a classic upper-body builder.',
@@ -160,6 +175,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Chest Press Machine', phase: 'main', intensity: 'medium', pattern: 'push',
+    muscles_worked: ['chest', 'triceps', 'shoulders'],
     uses_equipment: ['chest_press_machine', 'machines'], avoid_injury: [], avoid_medical: [], approx_minutes: 7,
     sets: 3, reps: '10-12', rpe: '6-7', rest_seconds: 60,
     why: 'Easy on the joints, locks you into safe form.',
@@ -168,6 +184,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Dumbbell One-Arm Row', phase: 'main', intensity: 'medium', pattern: 'pull',
+    muscles_worked: ['back', 'lats', 'biceps'],
     uses_equipment: ['dumbbells', 'bench'], avoid_injury: [], avoid_medical: [], approx_minutes: 7,
     sets: 3, reps: '10-12', rpe: '6-7', rest_seconds: 45,
     why: 'Builds your back — the muscle most beginners forget.',
@@ -176,6 +193,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Lat Pulldown', phase: 'main', intensity: 'medium', pattern: 'pull',
+    muscles_worked: ['lats', 'back', 'biceps'],
     uses_equipment: ['lat_pulldown', 'cables', 'machines'], avoid_injury: [], avoid_medical: [], approx_minutes: 7,
     sets: 3, reps: '10-12', rpe: '6-7', rest_seconds: 60,
     why: 'V-shape builder, easy to learn.',
@@ -184,6 +202,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Seated Cable Row', phase: 'main', intensity: 'medium', pattern: 'pull',
+    muscles_worked: ['back', 'lats', 'biceps'],
     uses_equipment: ['cables', 'machines'], avoid_injury: [], avoid_medical: [], approx_minutes: 7,
     sets: 3, reps: '10-12', rpe: '6-7', rest_seconds: 60,
     why: 'Back thickness, posture, and grip — all in one.',
@@ -192,6 +211,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Dumbbell Shoulder Press', phase: 'main', intensity: 'medium', pattern: 'overhead',
+    muscles_worked: ['shoulders', 'triceps'],
     uses_equipment: ['dumbbells'], avoid_injury: ['shoulder'], avoid_medical: ['high_bp', 'heart_condition'], approx_minutes: 7,
     sets: 3, reps: '8-10', rpe: '6-7', rest_seconds: 60,
     why: 'Strong shoulders make every upper-body lift easier.',
@@ -200,6 +220,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Dumbbell Step-up', phase: 'main', intensity: 'medium', pattern: 'lunge',
+    muscles_worked: ['quads', 'glutes', 'balance'],
     uses_equipment: ['dumbbells', 'bench'], avoid_injury: [], avoid_medical: [], approx_minutes: 6,
     sets: 2, reps: '10 each leg', rpe: '6-7', rest_seconds: 60,
     why: 'Knee-friendly single-leg builder — control matters more than weight.',
@@ -210,6 +231,7 @@ export const EXERCISES: ExerciseEntry[] = [
   // ==================== HEAVY (barbell compounds + weighted advanced) ====================
   {
     name: 'Barbell Back Squat', phase: 'main', intensity: 'heavy', pattern: 'squat',
+    muscles_worked: ['quads', 'glutes', 'core'],
     uses_equipment: ['barbell'], avoid_injury: ['lower_back', 'knee'],
     avoid_medical: ['high_bp', 'heart_condition', 'pregnancy'], approx_minutes: 10,
     sets: 4, reps: '6-8', rpe: '7', rest_seconds: 120,
@@ -219,6 +241,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Barbell Romanian Deadlift', phase: 'main', intensity: 'heavy', pattern: 'hinge',
+    muscles_worked: ['hamstrings', 'glutes', 'lower_back'],
     uses_equipment: ['barbell'], avoid_injury: ['lower_back'],
     avoid_medical: ['high_bp', 'heart_condition', 'pregnancy'], approx_minutes: 10,
     sets: 4, reps: '6-8', rpe: '7', rest_seconds: 120,
@@ -228,6 +251,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Barbell Bench Press', phase: 'main', intensity: 'heavy', pattern: 'push',
+    muscles_worked: ['chest', 'triceps', 'shoulders'],
     uses_equipment: ['barbell', 'bench'], avoid_injury: ['shoulder', 'wrist'],
     avoid_medical: ['high_bp', 'heart_condition'], approx_minutes: 10,
     sets: 4, reps: '6-8', rpe: '7', rest_seconds: 120,
@@ -237,6 +261,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Barbell Row', phase: 'main', intensity: 'heavy', pattern: 'pull',
+    muscles_worked: ['back', 'lats', 'biceps'],
     uses_equipment: ['barbell'], avoid_injury: ['lower_back'],
     avoid_medical: ['high_bp', 'heart_condition', 'pregnancy'], approx_minutes: 9,
     sets: 4, reps: '6-8', rpe: '7', rest_seconds: 120,
@@ -246,6 +271,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Barbell Overhead Press', phase: 'main', intensity: 'heavy', pattern: 'overhead',
+    muscles_worked: ['shoulders', 'triceps', 'core'],
     uses_equipment: ['barbell'], avoid_injury: ['shoulder', 'lower_back'],
     avoid_medical: ['high_bp', 'heart_condition', 'pregnancy'], approx_minutes: 9,
     sets: 4, reps: '6-8', rpe: '7', rest_seconds: 120,
@@ -255,6 +281,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Weighted Pull-up', phase: 'main', intensity: 'heavy', pattern: 'pull',
+    muscles_worked: ['lats', 'back', 'biceps'],
     uses_equipment: ['pull_up_bar', 'dumbbells'], avoid_injury: ['shoulder', 'wrist'],
     avoid_medical: [], approx_minutes: 8,
     sets: 4, reps: '5-8', rpe: '7', rest_seconds: 120,
@@ -266,6 +293,7 @@ export const EXERCISES: ExerciseEntry[] = [
   // ==================== YOGA (opt-in day) ====================
   {
     name: 'Sun Salutation (Surya Namaskar A)', phase: 'main', intensity: 'light', pattern: 'yoga',
+    muscles_worked: ['full_body', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: ['lower_back'],
     avoid_medical: ['pregnancy'], approx_minutes: 6,
     sets: 3, reps: '3 rounds', rpe: '5-6', rest_seconds: 30,
@@ -275,6 +303,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Warrior II (Virabhadrasana II)', phase: 'main', intensity: 'light', pattern: 'yoga',
+    muscles_worked: ['quads', 'glutes', 'shoulders', 'balance'],
     uses_equipment: ['bodyweight'], avoid_injury: ['knee'], avoid_medical: [], approx_minutes: 4,
     sets: 2, reps: '45 sec each side', rpe: '5', rest_seconds: 20, hold_seconds: 45,
     why: 'Builds leg endurance, opens hips, teaches steady breath under tension.',
@@ -283,6 +312,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Downward-Facing Dog', phase: 'main', intensity: 'light', pattern: 'yoga',
+    muscles_worked: ['shoulders', 'hamstrings', 'calves'],
     uses_equipment: ['bodyweight'], avoid_injury: ['wrist', 'shoulder'],
     avoid_medical: ['high_bp'], approx_minutes: 3,
     sets: 3, reps: '30 sec', rpe: '4-5', rest_seconds: 15, hold_seconds: 30,
@@ -292,6 +322,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Bridge Pose (Setu Bandha)', phase: 'main', intensity: 'light', pattern: 'yoga',
+    muscles_worked: ['glutes', 'lower_back', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: ['neck'], avoid_medical: [], approx_minutes: 3,
     sets: 3, reps: '45 sec', rpe: '4-5', rest_seconds: 20, hold_seconds: 45,
     why: 'Wakes up glutes, opens the front of the hips, back-friendly.',
@@ -300,6 +331,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Tree Pose (Vrikshasana)', phase: 'main', intensity: 'light', pattern: 'yoga',
+    muscles_worked: ['balance', 'core'],
     uses_equipment: ['bodyweight'], avoid_injury: ['knee'], avoid_medical: [], approx_minutes: 3,
     sets: 2, reps: '30 sec each side', rpe: '4', rest_seconds: 15, hold_seconds: 30,
     why: 'Builds balance, focus, and ankle strength — grounds the whole session.',
@@ -308,6 +340,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Cat-Cow Flow', phase: 'main', intensity: 'light', pattern: 'yoga',
+    muscles_worked: ['lower_back', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 3,
     sets: 3, reps: '10 rounds', rpe: '3-4', rest_seconds: 10,
     why: 'Mobilises the spine — the best 3 minutes for anyone who sits at a desk.',
@@ -316,6 +349,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Cobra Pose (Bhujangasana)', phase: 'main', intensity: 'light', pattern: 'yoga',
+    muscles_worked: ['lower_back', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: ['lower_back', 'wrist'],
     avoid_medical: ['pregnancy'], approx_minutes: 3,
     sets: 3, reps: '20 sec', rpe: '4', rest_seconds: 15, hold_seconds: 20,
@@ -325,6 +359,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Seated Forward Fold', phase: 'main', intensity: 'light', pattern: 'yoga',
+    muscles_worked: ['hamstrings', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 3,
     sets: 2, reps: '45 sec', rpe: '3', rest_seconds: 15, hold_seconds: 45,
     why: 'Slowly lengthens the whole back of the body. Calms the mind.',
@@ -335,6 +370,7 @@ export const EXERCISES: ExerciseEntry[] = [
   // ==================== MOBILITY & STRETCHING ====================
   {
     name: '90/90 Hip Stretch', phase: 'main', intensity: 'light', pattern: 'mobility',
+    muscles_worked: ['hip_flexors', 'glutes', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: ['knee'], avoid_medical: [], approx_minutes: 4,
     sets: 2, reps: '45 sec each side', rpe: '3', rest_seconds: 15, hold_seconds: 45,
     why: 'Opens tight hips from prolonged sitting — most people\'s biggest limitation.',
@@ -343,6 +379,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Deep Squat Hold', phase: 'main', intensity: 'light', pattern: 'mobility',
+    muscles_worked: ['hip_flexors', 'quads', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: ['knee'], avoid_medical: [], approx_minutes: 3,
     sets: 3, reps: '30 sec', rpe: '4', rest_seconds: 30, hold_seconds: 30,
     why: 'Restores hip and ankle mobility while opening the groin.',
@@ -351,6 +388,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Thoracic Rotation (Open Books)', phase: 'main', intensity: 'light', pattern: 'mobility',
+    muscles_worked: ['back', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: ['shoulder'], avoid_medical: [], approx_minutes: 3,
     sets: 2, reps: '8 each side', rpe: '3', rest_seconds: 15,
     why: 'Unlocks the upper back — huge for posture and shoulder pressing.',
@@ -359,6 +397,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Ankle CARs (Circles)', phase: 'main', intensity: 'light', pattern: 'mobility',
+    muscles_worked: ['calves', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 3,
     sets: 2, reps: '10 each direction, each foot', rpe: '2-3', rest_seconds: 15,
     why: 'Ankle mobility protects your knees and improves squat depth.',
@@ -367,6 +406,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Kneeling Hip Flexor Stretch', phase: 'main', intensity: 'light', pattern: 'mobility',
+    muscles_worked: ['hip_flexors', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: ['knee'], avoid_medical: [], approx_minutes: 3,
     sets: 2, reps: '45 sec each side', rpe: '3', rest_seconds: 15, hold_seconds: 45,
     why: 'Undoes the damage of a full day of sitting.',
@@ -375,6 +415,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'World\'s Greatest Stretch', phase: 'main', intensity: 'light', pattern: 'mobility',
+    muscles_worked: ['full_body', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: ['knee', 'wrist'], avoid_medical: [], approx_minutes: 4,
     sets: 2, reps: '5 each side', rpe: '4', rest_seconds: 20,
     why: 'Hits hips, hamstrings, ankles, and thoracic spine in one flow.',
@@ -383,6 +424,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Wall Chest Opener', phase: 'main', intensity: 'light', pattern: 'mobility',
+    muscles_worked: ['chest', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: ['shoulder'], avoid_medical: [], approx_minutes: 3,
     sets: 2, reps: '30 sec each side', rpe: '3', rest_seconds: 15, hold_seconds: 30,
     why: 'Opens tight pecs from too much sitting or pressing work.',
@@ -391,6 +433,7 @@ export const EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Cross-Body Glute Stretch', phase: 'main', intensity: 'light', pattern: 'mobility',
+    muscles_worked: ['glutes', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: ['knee'], avoid_medical: [], approx_minutes: 3,
     sets: 2, reps: '45 sec each side', rpe: '3', rest_seconds: 15, hold_seconds: 45,
     why: 'Releases the glute + piriformis — common cause of lower-back tightness.',
@@ -403,6 +446,7 @@ export const EXERCISES: ExerciseEntry[] = [
 const WARMUP_EXERCISES: ExerciseEntry[] = [
   {
     name: 'Marching in Place', phase: 'warmup', intensity: 'light', pattern: 'cardio',
+    muscles_worked: ['cardio', 'core'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 1,
     sets: 1, reps: '60 sec', rpe: '4-5', rest_seconds: 0, hold_seconds: 60,
     why: 'Wakes your heart rate up gradually before real work.',
@@ -411,6 +455,7 @@ const WARMUP_EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Arm Circles', phase: 'warmup', intensity: 'light', pattern: 'overhead',
+    muscles_worked: ['shoulders', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 1,
     sets: 1, reps: '10 forward + 10 back', rpe: '4', rest_seconds: 0,
     why: 'Opens the shoulder joint before any pressing or pulling.',
@@ -419,6 +464,7 @@ const WARMUP_EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Bodyweight Squat to Reach', phase: 'warmup', intensity: 'light', pattern: 'squat',
+    muscles_worked: ['quads', 'glutes', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 1,
     sets: 1, reps: '10 reps', rpe: '4-5', rest_seconds: 0,
     why: 'Grooves the squat pattern and warms up the hips.',
@@ -427,6 +473,7 @@ const WARMUP_EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Hip Circles', phase: 'warmup', intensity: 'light', pattern: 'lunge',
+    muscles_worked: ['hip_flexors', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 1,
     sets: 1, reps: '8 each side', rpe: '4', rest_seconds: 0,
     why: 'Loosens hips so squats and hinges feel smoother.',
@@ -439,6 +486,7 @@ const WARMUP_EXERCISES: ExerciseEntry[] = [
 const COOLDOWN_EXERCISES: ExerciseEntry[] = [
   {
     name: 'Standing Quad Stretch', phase: 'cooldown', intensity: 'light', pattern: 'lunge',
+    muscles_worked: ['quads', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 1,
     sets: 1, reps: '30 sec each side', rpe: '3', rest_seconds: 0, hold_seconds: 30,
     why: 'Stretches the front of your thighs after squats and lunges.',
@@ -447,6 +495,7 @@ const COOLDOWN_EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Standing Hamstring Stretch', phase: 'cooldown', intensity: 'light', pattern: 'hinge',
+    muscles_worked: ['hamstrings', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 1,
     sets: 1, reps: '30 sec each side', rpe: '3', rest_seconds: 0, hold_seconds: 30,
     why: 'Relaxes hamstrings after any leg work.',
@@ -455,6 +504,7 @@ const COOLDOWN_EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Cross-Body Shoulder Stretch', phase: 'cooldown', intensity: 'light', pattern: 'push',
+    muscles_worked: ['shoulders', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: [], approx_minutes: 1,
     sets: 1, reps: '30 sec each side', rpe: '3', rest_seconds: 0, hold_seconds: 30,
     why: 'Opens shoulders after pressing and rowing.',
@@ -463,6 +513,7 @@ const COOLDOWN_EXERCISES: ExerciseEntry[] = [
   },
   {
     name: 'Child\'s Pose', phase: 'cooldown', intensity: 'light', pattern: 'core',
+    muscles_worked: ['back', 'flexibility'],
     uses_equipment: ['bodyweight'], avoid_injury: [], avoid_medical: ['pregnancy'], approx_minutes: 1,
     sets: 1, reps: '60 sec', rpe: '2', rest_seconds: 0, hold_seconds: 60,
     why: 'Lengthens the back and calms breathing at the end.',
